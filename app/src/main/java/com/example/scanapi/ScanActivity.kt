@@ -81,6 +81,7 @@ class ScanActivity : AppCompatActivity() {
 
         captureButton.setOnClickListener {
             captureImage()
+            captureButton.isEnabled = false // Disable capture button after click
         }
 
         uploadButton.setOnClickListener {
@@ -238,6 +239,7 @@ class ScanActivity : AppCompatActivity() {
 
             // Resume camera preview when bottom sheet is dismissed
             bottomSheetDialog.setOnDismissListener {
+                captureButton.isEnabled = true // Re-enable the capture button
                 resumeCamera()
             }
 
