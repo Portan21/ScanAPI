@@ -1,26 +1,27 @@
 package com.example.scanapi
 
-import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.Manifest
 
 class ScanActivity : AppCompatActivity() {
 
@@ -105,11 +106,13 @@ class ScanActivity : AppCompatActivity() {
 
                 roboflowService.uploadImage(resizedFile, { inferenceResponse ->
                     Log.d("ScanActivity", "Inference successful: $inferenceResponse")
-                    inferenceResponse.predictions.forEach { prediction ->
-                        Log.d("ScanActivity", "Detected: ${prediction.className} with confidence ${prediction.confidence}")
+                    val resultText = inferenceResponse.predictions.joinToString("\n") {
+                        "Detected: ${it.className} with confidence ${it.confidence}"
                     }
+                    showResultBottomSheet(resultText)
                 }, { errorMessage ->
                     Log.e("ScanActivity", errorMessage)
+                    showResultBottomSheet("Error: $errorMessage")
                 })
             }
 
@@ -161,12 +164,19 @@ class ScanActivity : AppCompatActivity() {
     private fun uploadImage(file: File) {
         roboflowService.uploadImage(file, { inferenceResponse ->
             Log.d("ScanActivity", "Inference successful: $inferenceResponse")
-            inferenceResponse.predictions.forEach { prediction ->
-                Log.d("ScanActivity", "Detected: ${prediction.className} with confidence ${prediction.confidence}")
+            val resultText = inferenceResponse.predictions.joinToString("\n") {
+                "Detected: ${it.className} with confidence ${it.confidence}"
             }
+            showResultBottomSheet(resultText)
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
+            showResultBottomSheet("Error: $errorMessage")
         })
+    }
+
+    private fun showResultBottomSheet(resultText: String) {
+        val bottomSheetFragment = ResultBottomSheetFragment.newInstance(resultText)
+        bottomSheetFragment.show(supportFragmentManager, bottomSheetFragment.tag)
     }
 
     companion object {
