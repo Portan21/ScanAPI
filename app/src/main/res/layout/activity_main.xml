@@ -1,21 +1,97 @@
-<?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#0D1B2A"
     tools:context=".MainActivity">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/previewView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    <ImageView
+        android:id="@+id/productImage"
+        android:layout_width="111dp"
+        android:layout_height="94dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="120dp"
+        android:src="@drawable/ic_product" />
 
-    <Button
-        android:id="@+id/captureButton"
+    <TextView
+        android:id="@+id/scanText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Capture"
-        android:layout_alignParentBottom="true"
+        android:layout_below="@id/productImage"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginTop="16dp"
+        android:text="Scan a Product"
+        android:textColor="#FFFFFF"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/loremText"
+        android:layout_width="375dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/scanText"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="8dp"
+        android:text="Lorem ipsum dolor et al. hwakjdhsaj lorem lore lorem mobile dev wtf"
+        android:textAlignment="center"
+        android:textColor="#B0B0B0"
+        android:textSize="14sp" />
+
+    <!-- White background view at the bottom -->
+    <View
+        android:id="@+id/whiteBackground"
+        android:layout_width="match_parent"
+        android:layout_height="261dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="0dp"
+        android:background="#FFFFFF" />
+
+    <Button
+        android:id="@+id/useCameraButton"
+        android:layout_width="300dp"
+        android:layout_height="60dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="55dp"
+        android:layout_marginEnd="55dp"
+        android:layout_marginBottom="234dp"
+        android:backgroundTint="#FFB600"
+        android:drawableLeft="@drawable/ic_camera"
+        android:drawablePadding="8dp"
+        android:text="Use Camera"
+        android:textColor="#0D1B2A"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/textOr"
+        android:layout_width="111dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="152dp"
+        android:layout_marginEnd="147dp"
+        android:layout_marginBottom="202dp"
+        android:text="----------- or -----------"
+        android:textColor="#B0B0B0"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/uploadFromPhotosButton"
+        android:layout_width="300dp"
+        android:layout_height="60dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="55dp"
+        android:layout_marginEnd="55dp"
+        android:layout_marginBottom="129dp"
+        android:backgroundTint="#FFB600"
+        android:drawableLeft="@drawable/ic_upload"
+        android:drawablePadding="8dp"
+        android:text="Upload from Photos"
+        android:textColor="#0D1B2A"
+        android:textSize="18sp" />
 </RelativeLayout>

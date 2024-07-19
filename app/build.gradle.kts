@@ -53,6 +53,12 @@ dependencies {
     implementation (libs.androidx.camera.lifecycle)
     implementation (libs.androidx.camera.view)
 
+    implementation (libs.androidx.camera.camera.core.v110alpha08.x3)
+    implementation (libs.androidx.camera.camera2.v110alpha08)
+    implementation (libs.androidx.camera.lifecycle.v110alpha08)
+    implementation (libs.androidx.camera.view.v100alpha23)
+    implementation (libs.androidx.camera.extensions)
+
     // Activity Result API
     implementation (libs.androidx.activity.ktx) // Check for the latest version on [Maven Central](https://search.maven.org/)
     implementation (libs.androidx.fragment.ktx) // Also check for the latest version
