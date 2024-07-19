@@ -35,28 +35,10 @@ class ScanActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var captureButton: Button
     private lateinit var backButton: Button
+    private lateinit var uploadButton: Button
 
     private var imageCapture: ImageCapture? = null
     private lateinit var roboflowService: RoboflowService
-    private lateinit var resultImageView: ImageView
-    private lateinit var resultTextView: TextView
-    private lateinit var closeButton: Button
-    private lateinit var uploadButton: Button
-
-    private val requestPermissionLauncher = registerForActivityResult(RequestPermission()) { isGranted: Boolean ->
-        if (isGranted) {
-            startCamera()
-        } else {
-            Log.e("ScanActivity", "Permission denied")
-        }
-    }
-
-    private val requestImagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let {
-            val file = uriToFile(it)
-            processImage(file)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +69,14 @@ class ScanActivity : AppCompatActivity() {
         uploadButton.setOnClickListener {
             requestImagePicker.launch("image/*")
             pauseCamera()
+        }
+
+        // Handle image URI passed from MainActivity
+        val imageUriString = intent.getStringExtra("imageUri")
+        if (imageUriString != null) {
+            val imageUri = Uri.parse(imageUriString)
+            val file = uriToFile(imageUri)
+            processImage(file)
         }
     }
 
@@ -203,52 +193,35 @@ class ScanActivity : AppCompatActivity() {
         })
     }
 
+    private fun showBottomSheet(imageFile: File, resultText: String, rotationDegree: Float) {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+        val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
+        val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
+
+        resultTextView.text = resultText
+
+        val bitmap = BitmapFactory.decodeFile(imageFile.path)
+        val rotatedBitmap = rotateImage(bitmap, rotationDegree)
+        val resizedBitmap = resizeImageForDisplay(rotatedBitmap, 800) // Adjust max width as needed
+        resultImageView.setImageBitmap(resizedBitmap)
+
+        bottomSheetDialog.setOnDismissListener {
+            resumeCamera()
+            captureButton.isEnabled = true // Re-enable capture button when bottom sheet is dismissed
+        }
+
+        bottomSheetDialog.show()
+    }
+
     private fun pauseCamera() {
-        previewView.visibility = View.GONE // Hide the preview view
+        previewView.visibility = View.INVISIBLE
     }
 
     private fun resumeCamera() {
-        previewView.visibility = View.VISIBLE // Show the preview view
-        startCamera() // Rebind the camera use cases
-    }
-
-    private fun showBottomSheet(file: File, resultText: String, rotationDegree: Float) {
-        runOnUiThread {
-            val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
-            val bottomSheetDialog = BottomSheetDialog(this)
-            bottomSheetDialog.setContentView(bottomSheetView)
-
-            // Get references to views
-            val resultImageView: ImageView = bottomSheetView.findViewById(R.id.resultImageView)
-            val resultTextView: TextView = bottomSheetView.findViewById(R.id.resultTextView)
-            val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
-
-            // Load and manually rotate the image
-            val bitmap = BitmapFactory.decodeFile(file.path)
-            val rotatedBitmap = rotateImage(bitmap, rotationDegree)
-            val resizedBitmap = resizeImageForDisplay(rotatedBitmap, 800) // Adjust width as needed
-            resultImageView.setImageBitmap(resizedBitmap)
-
-            // Set the result text
-            resultTextView.text = resultText
-
-            // Handle the close button
-            closeButton.setOnClickListener {
-                bottomSheetDialog.dismiss()
-            }
-
-            // Resume camera preview when bottom sheet is dismissed
-            bottomSheetDialog.setOnDismissListener {
-                captureButton.isEnabled = true // Re-enable the capture button
-                resumeCamera()
-            }
-
-            Log.d("ScanActivity", "Original image size: ${bitmap.width}x${bitmap.height}")
-            Log.d("ScanActivity", "Rotated image size: ${rotatedBitmap.width}x${rotatedBitmap.height}")
-            Log.d("ScanActivity", "Resized image size: ${resizedBitmap.width}x${resizedBitmap.height}")
-
-            bottomSheetDialog.show()
-        }
+        previewView.visibility = View.VISIBLE
     }
 
     private fun rotateImageIfRequired(bitmap: Bitmap, imagePath: String): Bitmap {
@@ -306,4 +279,21 @@ class ScanActivity : AppCompatActivity() {
 
         return resizedFile
     }
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                startCamera()
+            } else {
+                Log.e("ScanActivity", "Camera permission denied")
+            }
+        }
+
+    private val requestImagePicker =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let {
+                val file = uriToFile(it)
+                processImage(file)
+            }
+        }
 }

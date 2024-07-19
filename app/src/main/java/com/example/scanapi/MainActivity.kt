@@ -2,6 +2,8 @@ package com.example.scanapi
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -9,6 +11,7 @@ import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 
@@ -47,7 +50,7 @@ class MainActivity : AppCompatActivity() {
             if (imageUri != null) {
                 // Convert URI to File and upload it
                 val file = uriToFile(imageUri)
-                uploadImage(file)
+                processImage(file)
             }
         }
     }
@@ -61,19 +64,32 @@ class MainActivity : AppCompatActivity() {
         return file
     }
 
-    private fun uploadImage(file: File) {
+    private fun processImage(file: File) {
         val roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
+
+        val bitmap = BitmapFactory.decodeFile(file.path)
+
         roboflowService.uploadImage(file, { inferenceResponse ->
             // Handle successful response
             Log.d("MainActivity", "Inference successful: $inferenceResponse")
-            inferenceResponse.predictions.forEach { prediction ->
-                Log.d("MainActivity", "Detected: ${prediction.className} with confidence ${prediction.confidence}")
-                // Update UI with bounding boxes and class names
+            val resultText = inferenceResponse.predictions.joinToString("\n") {
+                "Detected: ${it.className} with confidence ${it.confidence}"
+            }
+            runOnUiThread {
+                showBottomSheet(resultText, bitmap)
             }
         }, { errorMessage ->
             // Handle errors
             Log.e("MainActivity", errorMessage)
+            runOnUiThread {
+                showBottomSheet("Error: $errorMessage", bitmap)
+            }
         })
+    }
+
+    private fun showBottomSheet(resultText: String, imageBitmap: Bitmap) {
+        val bottomSheetFragment = ResultBottomSheetFragment.newInstance(resultText, imageBitmap)
+        bottomSheetFragment.show(supportFragmentManager, bottomSheetFragment.tag)
     }
 
     companion object {
