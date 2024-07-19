@@ -23,6 +23,11 @@ import android.Manifest
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.view.View
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.IOException
 
 
 class ScanActivity : AppCompatActivity() {
@@ -36,12 +41,20 @@ class ScanActivity : AppCompatActivity() {
     private lateinit var resultImageView: ImageView
     private lateinit var resultTextView: TextView
     private lateinit var closeButton: Button
+    private lateinit var uploadButton: Button
 
     private val requestPermissionLauncher = registerForActivityResult(RequestPermission()) { isGranted: Boolean ->
         if (isGranted) {
             startCamera()
         } else {
             Log.e("ScanActivity", "Permission denied")
+        }
+    }
+
+    private val requestImagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            val file = uriToFile(it)
+            processImage(file)
         }
     }
 
@@ -52,6 +65,7 @@ class ScanActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         captureButton = findViewById(R.id.captureButton)
         backButton = findViewById(R.id.backButton)
+        uploadButton = findViewById(R.id.uploadButton)
 
         roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
 
@@ -61,7 +75,6 @@ class ScanActivity : AppCompatActivity() {
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
 
-        // Set up the back button to finish the activity and return to MainActivity
         backButton.setOnClickListener {
             finish() // This will return to the previous activity (MainActivity)
         }
@@ -69,6 +82,49 @@ class ScanActivity : AppCompatActivity() {
         captureButton.setOnClickListener {
             captureImage()
         }
+
+        uploadButton.setOnClickListener {
+            requestImagePicker.launch("image/*")
+            pauseCamera()
+        }
+    }
+
+    private fun uriToFile(uri: Uri): File {
+        val inputStream = contentResolver.openInputStream(uri) ?: throw IOException("Unable to open input stream")
+        val file = File(externalMediaDirs.first(), "uploaded_${System.currentTimeMillis()}.jpg")
+        file.outputStream().use { outputStream ->
+            inputStream.copyTo(outputStream)
+        }
+        return file
+    }
+
+    private fun processImage(file: File) {
+        // Load the bitmap and resize it using resizeImageForDisplay
+        val bitmap = BitmapFactory.decodeFile(file.path)
+        val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust width as needed
+
+        // Save the resized bitmap to a temporary file
+        val resizedFile = File(externalMediaDirs.first(), "resized_${file.name}")
+        FileOutputStream(resizedFile).use { outputStream ->
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        }
+
+        roboflowService.uploadImage(resizedFile, { inferenceResponse ->
+            // Handle successful response
+            Log.d("ScanActivity", "Inference successful: $inferenceResponse")
+            val resultText = inferenceResponse.predictions.joinToString("\n") {
+                "Detected: ${it.className} with confidence ${it.confidence}"
+            }
+            runOnUiThread {
+                showBottomSheet(resizedFile, resultText, 0f) // Pass 0f for rotation if not applicable
+            }
+        }, { errorMessage ->
+            // Handle errors
+            Log.e("ScanActivity", errorMessage)
+            runOnUiThread {
+                showBottomSheet(resizedFile, "Error: $errorMessage", 0f) // Pass 0f for rotation if not applicable
+            }
+        })
     }
 
     private fun startCamera() {
