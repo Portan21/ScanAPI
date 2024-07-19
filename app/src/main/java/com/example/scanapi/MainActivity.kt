@@ -2,6 +2,8 @@ package com.example.scanapi
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -19,6 +21,7 @@ import java.util.Locale
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -86,20 +89,18 @@ class MainActivity : AppCompatActivity() {
         imageCapture.takePicture(outputOptions, ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 Log.d("MainActivity", "Image saved: ${file.absolutePath}")
-                roboflowService.uploadImage(file, object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        Log.e("MainActivity", "Upload failed: ${e.message}", e)
-                    }
+                val resizedFile = resizeImage(file, 1024, 768)  // Adjust the dimensions as needed
 
-                    override fun onResponse(call: Call, response: Response) {
-                        if (response.isSuccessful) {
-                            val responseBody = response.body?.string()
-                            // Process the response (e.g., parse JSON and update UI)
-                            Log.d("MainActivity", "Upload successful: $responseBody")
-                        } else {
-                            Log.e("MainActivity", "Upload error: ${response.message}")
-                        }
+                roboflowService.uploadImage(resizedFile, { inferenceResponse ->
+                    // Handle successful response
+                    Log.d("MainActivity", "Inference successful: $inferenceResponse")
+                    inferenceResponse.predictions.forEach { prediction ->
+                        Log.d("MainActivity", "Detected: ${prediction.className} with confidence ${prediction.confidence}")
+                        // Update UI with bounding boxes and class names
                     }
+                }, { errorMessage ->
+                    // Handle errors
+                    Log.e("MainActivity", errorMessage)
                 })
             }
 
@@ -107,5 +108,18 @@ class MainActivity : AppCompatActivity() {
                 Log.e("MainActivity", "Image capture failed: ${exception.message}", exception)
             }
         })
+    }
+
+    private fun resizeImage(file: File, width: Int, height: Int): File {
+        val bitmap = BitmapFactory.decodeFile(file.path)
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
+
+        val resizedFile = File(externalMediaDirs.first(), "resized_${file.name}")
+        val outputStream = FileOutputStream(resizedFile)
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        outputStream.flush()
+        outputStream.close()
+
+        return resizedFile
     }
 }
