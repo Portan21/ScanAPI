@@ -182,29 +182,60 @@ class ScanActivity : AppCompatActivity() {
             bottomSheetDialog.setOnDismissListener {
                 resumeCamera()
             }
+            Log.d("ScanActivity", "Original image size: ${bitmap.width}x${bitmap.height}")
+            Log.d("ScanActivity", "Rotated image size: ${rotatedBitmap.width}x${rotatedBitmap.height}")
+            Log.d("ScanActivity", "Resized image size: ${resizedBitmap.width}x${resizedBitmap.height}")
 
             bottomSheetDialog.show()
         }
     }
 
-    private fun rotateImageIfRequired(bitmap: Bitmap, filePath: String): Bitmap {
-        val exif = ExifInterface(filePath)
+    private fun rotateImageIfRequired(bitmap: Bitmap, imagePath: String): Bitmap {
+        val exif = ExifInterface(imagePath)
         val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        val matrix = Matrix()
 
+        val matrix = Matrix()
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
             ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
             ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            // Handle other cases if needed
+            ExifInterface.ORIENTATION_NORMAL -> {
+                // No rotation needed
+                Log.d("ScanActivity", "Orientation is NORMAL, no rotation applied")
+                return bitmap
+            }
+            else -> {
+                // Fallback for undefined orientations
+                Log.d("ScanActivity", "Unknown orientation: $orientation, no rotation applied")
+                return bitmap
+            }
         }
 
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
+    private fun manuallyRotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
+        val matrix = Matrix().apply { postRotate(degrees) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
     private fun resizeImageForDisplay(bitmap: Bitmap, maxWidth: Int): Bitmap {
-        val aspectRatio = bitmap.width.toFloat() / bitmap.height
-        val newHeight = (maxWidth / aspectRatio).toInt()
-        return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
+        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        val newWidth: Int
+        val newHeight: Int
+
+        if (aspectRatio > 1) {
+            // Landscape
+            newWidth = maxWidth
+            newHeight = (newWidth / aspectRatio).toInt()
+        } else {
+            // Portrait
+            newHeight = maxWidth
+            newWidth = (newHeight * aspectRatio).toInt()
+        }
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
     private fun resizeImage(file: File, width: Int, height: Int): File {
