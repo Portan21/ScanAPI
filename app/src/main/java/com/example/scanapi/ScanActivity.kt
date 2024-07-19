@@ -1,46 +1,49 @@
 package com.example.scanapi
 
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
+import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.core.content.ContextCompat
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import android.Manifest
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.view.View
+
 
 class ScanActivity : AppCompatActivity() {
 
     private lateinit var previewView: PreviewView
     private lateinit var captureButton: Button
     private lateinit var backButton: Button
-    private lateinit var uploadButton: Button
+
     private var imageCapture: ImageCapture? = null
-
     private lateinit var roboflowService: RoboflowService
+    private lateinit var resultImageView: ImageView
+    private lateinit var resultTextView: TextView
+    private lateinit var closeButton: Button
 
-    private val requestPermissionLauncher: ActivityResultLauncher<String> =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                startCamera()
-            } else {
-                Log.e("ScanActivity", "Permission denied")
-            }
+    private val requestPermissionLauncher = registerForActivityResult(RequestPermission()) { isGranted: Boolean ->
+        if (isGranted) {
+            startCamera()
+        } else {
+            Log.e("ScanActivity", "Permission denied")
         }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,7 +52,6 @@ class ScanActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         captureButton = findViewById(R.id.captureButton)
         backButton = findViewById(R.id.backButton)
-        uploadButton = findViewById(R.id.uploadButton)
 
         roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
 
@@ -59,16 +61,13 @@ class ScanActivity : AppCompatActivity() {
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
 
+        // Set up the back button to finish the activity and return to MainActivity
         backButton.setOnClickListener {
-            finish() // Return to MainActivity
+            finish() // This will return to the previous activity (MainActivity)
         }
 
         captureButton.setOnClickListener {
             captureImage()
-        }
-
-        uploadButton.setOnClickListener {
-            pickImageFromGallery()
         }
     }
 
@@ -77,21 +76,38 @@ class ScanActivity : AppCompatActivity() {
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
 
-            val preview = Preview.Builder().build()
+            // Create preview use case
+            val preview = Preview.Builder()
+                .setTargetAspectRatio(AspectRatio.RATIO_16_9) // Adjust as needed
+                .build()
             preview.setSurfaceProvider(previewView.surfaceProvider)
 
-            imageCapture = ImageCapture.Builder().build()
+            // Create image capture use case
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY) // Set capture mode to minimize latency
+                .setTargetAspectRatio(AspectRatio.RATIO_16_9) // Adjust as needed
+                .build()
 
             val cameraSelector = CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build()
 
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+            try {
+                // Unbind all use cases before binding new ones
+                cameraProvider.unbindAll()
+
+                // Bind use cases to the camera
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+            } catch (e: Exception) {
+                Log.e("ScanActivity", "Failed to bind camera use cases", e)
+            }
 
         }, ContextCompat.getMainExecutor(this))
     }
 
     private fun captureImage() {
+        pauseCamera() // Hide the camera preview
+
         val imageCapture = imageCapture ?: return
 
         val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".jpg"
@@ -102,17 +118,23 @@ class ScanActivity : AppCompatActivity() {
         imageCapture.takePicture(outputOptions, ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 Log.d("ScanActivity", "Image saved: ${file.absolutePath}")
-                val resizedFile = resizeImage(file, 1024, 768)
+                val resizedFile = resizeImage(file, 1024, 768)  // Adjust the dimensions as needed
 
                 roboflowService.uploadImage(resizedFile, { inferenceResponse ->
+                    // Handle successful response
                     Log.d("ScanActivity", "Inference successful: $inferenceResponse")
                     val resultText = inferenceResponse.predictions.joinToString("\n") {
                         "Detected: ${it.className} with confidence ${it.confidence}"
                     }
-                    showResultBottomSheet(resultText)
+                    runOnUiThread {
+                        showBottomSheet(resizedFile, resultText) // Ensure showBottomSheet is called on the main thread
+                    }
                 }, { errorMessage ->
+                    // Handle errors
                     Log.e("ScanActivity", errorMessage)
-                    showResultBottomSheet("Error: $errorMessage")
+                    runOnUiThread {
+                        showBottomSheet(resizedFile, "Error: $errorMessage") // Pass error message as resultText
+                    }
                 })
             }
 
@@ -120,6 +142,69 @@ class ScanActivity : AppCompatActivity() {
                 Log.e("ScanActivity", "Image capture failed: ${exception.message}", exception)
             }
         })
+    }
+
+    private fun pauseCamera() {
+        previewView.visibility = View.GONE // Hide the preview view
+    }
+
+    private fun resumeCamera() {
+        previewView.visibility = View.VISIBLE // Show the preview view
+        startCamera() // Rebind the camera use cases
+    }
+
+    private fun showBottomSheet(file: File, resultText: String) {
+        runOnUiThread {
+            val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
+            val bottomSheetDialog = BottomSheetDialog(this)
+            bottomSheetDialog.setContentView(bottomSheetView)
+
+            // Get references to views
+            val resultImageView: ImageView = bottomSheetView.findViewById(R.id.resultImageView)
+            val resultTextView: TextView = bottomSheetView.findViewById(R.id.resultTextView)
+            val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
+
+            // Load and display the image
+            val bitmap = BitmapFactory.decodeFile(file.path)
+            val rotatedBitmap = rotateImageIfRequired(bitmap, file.path)
+            val resizedBitmap = resizeImageForDisplay(rotatedBitmap, 800) // Adjust width as needed
+            resultImageView.setImageBitmap(resizedBitmap)
+
+            // Set the result text
+            resultTextView.text = resultText
+
+            // Handle the close button
+            closeButton.setOnClickListener {
+                bottomSheetDialog.dismiss()
+            }
+
+            // Resume camera preview when bottom sheet is dismissed
+            bottomSheetDialog.setOnDismissListener {
+                resumeCamera()
+            }
+
+            bottomSheetDialog.show()
+        }
+    }
+
+    private fun rotateImageIfRequired(bitmap: Bitmap, filePath: String): Bitmap {
+        val exif = ExifInterface(filePath)
+        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        val matrix = Matrix()
+
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        }
+
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private fun resizeImageForDisplay(bitmap: Bitmap, maxWidth: Int): Bitmap {
+        val aspectRatio = bitmap.width.toFloat() / bitmap.height
+        val newHeight = (maxWidth / aspectRatio).toInt()
+        return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
     }
 
     private fun resizeImage(file: File, width: Int, height: Int): File {
@@ -133,53 +218,5 @@ class ScanActivity : AppCompatActivity() {
         outputStream.close()
 
         return resizedFile
-    }
-
-    private fun pickImageFromGallery() {
-        val intent = Intent(Intent.ACTION_PICK)
-        intent.type = "image/*"
-        startActivityForResult(intent, REQUEST_IMAGE_PICK)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK) {
-            val imageUri = data?.data
-            if (imageUri != null) {
-                val file = uriToFile(imageUri)
-                uploadImage(file)
-            }
-        }
-    }
-
-    private fun uriToFile(uri: Uri): File {
-        val inputStream = contentResolver.openInputStream(uri) ?: throw IOException("Unable to open input stream")
-        val file = File(externalMediaDirs.first(), "uploaded_${System.currentTimeMillis()}.jpg")
-        file.outputStream().use { outputStream ->
-            inputStream.copyTo(outputStream)
-        }
-        return file
-    }
-
-    private fun uploadImage(file: File) {
-        roboflowService.uploadImage(file, { inferenceResponse ->
-            Log.d("ScanActivity", "Inference successful: $inferenceResponse")
-            val resultText = inferenceResponse.predictions.joinToString("\n") {
-                "Detected: ${it.className} with confidence ${it.confidence}"
-            }
-            showResultBottomSheet(resultText)
-        }, { errorMessage ->
-            Log.e("ScanActivity", errorMessage)
-            showResultBottomSheet("Error: $errorMessage")
-        })
-    }
-
-    private fun showResultBottomSheet(resultText: String) {
-        val bottomSheetFragment = ResultBottomSheetFragment.newInstance(resultText)
-        bottomSheetFragment.show(supportFragmentManager, bottomSheetFragment.tag)
-    }
-
-    companion object {
-        private const val REQUEST_IMAGE_PICK = 1002
     }
 }
