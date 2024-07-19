@@ -108,6 +108,8 @@ class ScanActivity : AppCompatActivity() {
     private fun captureImage() {
         pauseCamera() // Hide the camera preview
 
+        val rotationDegree = 90f
+
         val imageCapture = imageCapture ?: return
 
         val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".jpg"
@@ -127,13 +129,13 @@ class ScanActivity : AppCompatActivity() {
                         "Detected: ${it.className} with confidence ${it.confidence}"
                     }
                     runOnUiThread {
-                        showBottomSheet(resizedFile, resultText) // Ensure showBottomSheet is called on the main thread
+                        showBottomSheet(file, resultText, rotationDegree) // Ensure showBottomSheet is called on the main thread
                     }
                 }, { errorMessage ->
                     // Handle errors
                     Log.e("ScanActivity", errorMessage)
                     runOnUiThread {
-                        showBottomSheet(resizedFile, "Error: $errorMessage") // Pass error message as resultText
+                        showBottomSheet(resizedFile, "Error: $errorMessage", rotationDegree) // Pass error message as resultText
                     }
                 })
             }
@@ -153,7 +155,7 @@ class ScanActivity : AppCompatActivity() {
         startCamera() // Rebind the camera use cases
     }
 
-    private fun showBottomSheet(file: File, resultText: String) {
+    private fun showBottomSheet(file: File, resultText: String, rotationDegree: Float) {
         runOnUiThread {
             val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
             val bottomSheetDialog = BottomSheetDialog(this)
@@ -164,9 +166,9 @@ class ScanActivity : AppCompatActivity() {
             val resultTextView: TextView = bottomSheetView.findViewById(R.id.resultTextView)
             val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
 
-            // Load and display the image
+            // Load and manually rotate the image
             val bitmap = BitmapFactory.decodeFile(file.path)
-            val rotatedBitmap = rotateImageIfRequired(bitmap, file.path)
+            val rotatedBitmap = rotateImage(bitmap, rotationDegree)
             val resizedBitmap = resizeImageForDisplay(rotatedBitmap, 800) // Adjust width as needed
             resultImageView.setImageBitmap(resizedBitmap)
 
@@ -182,6 +184,7 @@ class ScanActivity : AppCompatActivity() {
             bottomSheetDialog.setOnDismissListener {
                 resumeCamera()
             }
+
             Log.d("ScanActivity", "Original image size: ${bitmap.width}x${bitmap.height}")
             Log.d("ScanActivity", "Rotated image size: ${rotatedBitmap.width}x${rotatedBitmap.height}")
             Log.d("ScanActivity", "Resized image size: ${resizedBitmap.width}x${resizedBitmap.height}")
@@ -199,24 +202,19 @@ class ScanActivity : AppCompatActivity() {
             ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
             ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
             ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-            // Handle other cases if needed
-            ExifInterface.ORIENTATION_NORMAL -> {
-                // No rotation needed
-                Log.d("ScanActivity", "Orientation is NORMAL, no rotation applied")
-                return bitmap
-            }
             else -> {
-                // Fallback for undefined orientations
-                Log.d("ScanActivity", "Unknown orientation: $orientation, no rotation applied")
-                return bitmap
+                // Apply 90-degree rotation if no valid EXIF orientation is found
+                Log.d("ScanActivity", "Applying manual rotation of 90 degrees")
+                matrix.postRotate(90f)
             }
         }
 
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    private fun manuallyRotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
-        val matrix = Matrix().apply { postRotate(degrees) }
+    private fun rotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
+        val matrix = Matrix()
+        matrix.postRotate(degrees)
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
