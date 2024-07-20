@@ -78,17 +78,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val bitmap = BitmapFactory.decodeFile(file.path)
 
         roboflowService.uploadImage(file, { inferenceResponse ->
-            // Handle successful response
-            Log.d("MainActivity", "Inference successful: $inferenceResponse")
-            val resultText = inferenceResponse.predictions.joinToString("\n") {
-                "Detected: ${it.className} with confidence ${it.confidence}"
+            Log.d("ScanActivity", "Inference successful: $inferenceResponse")
+            val resultText = if (inferenceResponse.predictions.isEmpty()) {
+                "No Result"
+            } else {
+                inferenceResponse.predictions.joinToString("\n") {
+                    "Detected: ${it.className} with confidence ${it.confidence}"
+                }
             }
             runOnUiThread {
                 showBottomSheet(file, resultText)
             }
         }, { errorMessage ->
-            // Handle errors
-            Log.e("MainActivity", errorMessage)
+            Log.e("ScanActivity", errorMessage)
             runOnUiThread {
                 showBottomSheet(file, "Error: $errorMessage")
             }
