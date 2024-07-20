@@ -200,6 +200,7 @@ class ScanActivity : AppCompatActivity() {
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
+        val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
 
         resultTextView.text = resultText
 
@@ -207,6 +208,11 @@ class ScanActivity : AppCompatActivity() {
         val rotatedBitmap = rotateImage(bitmap, rotationDegree)
         val resizedBitmap = resizeImageForDisplay(rotatedBitmap, 800) // Adjust max width as needed
         resultImageView.setImageBitmap(resizedBitmap)
+
+        closeButton.setOnClickListener {
+            Log.d("ScanActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
+        }
 
         bottomSheetDialog.setOnDismissListener {
             resumeCamera()

@@ -8,8 +8,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -76,20 +79,56 @@ class MainActivity : AppCompatActivity() {
                 "Detected: ${it.className} with confidence ${it.confidence}"
             }
             runOnUiThread {
-                showBottomSheet(resultText, bitmap)
+                showBottomSheet(file, resultText)
             }
         }, { errorMessage ->
             // Handle errors
             Log.e("MainActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet("Error: $errorMessage", bitmap)
+                showBottomSheet(file, "Error: $errorMessage")
             }
         })
     }
 
-    private fun showBottomSheet(resultText: String, imageBitmap: Bitmap) {
-        val bottomSheetFragment = ResultBottomSheetFragment.newInstance(resultText, imageBitmap)
-        bottomSheetFragment.show(supportFragmentManager, bottomSheetFragment.tag)
+    private fun showBottomSheet(imageFile: File, resultText: String) {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+        val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
+        val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
+        val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+
+        resultTextView.text = resultText
+
+        val bitmap = BitmapFactory.decodeFile(imageFile.path)
+        val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust max width as needed
+        resultImageView.setImageBitmap(resizedBitmap)
+
+        closeButton.setOnClickListener {
+            Log.d("MainActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
+        }
+
+        bottomSheetDialog.show()
+    }
+
+    private fun resizeImageForDisplay(bitmap: Bitmap, maxWidth: Int): Bitmap {
+        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        val newWidth: Int
+        val newHeight: Int
+
+        if (aspectRatio > 1) {
+            // Landscape
+            newWidth = maxWidth
+            newHeight = (newWidth / aspectRatio).toInt()
+        } else {
+            // Portrait
+            newHeight = maxWidth
+            newWidth = (newHeight * aspectRatio).toInt()
+        }
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
     companion object {

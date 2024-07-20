@@ -2,6 +2,7 @@ package com.example.scanapi
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -40,6 +41,8 @@ class ResultBottomSheetFragment : BottomSheetDialogFragment() {
         val resultImageView: ImageView = view.findViewById(R.id.resultImageView)
         val closeButton: Button = view.findViewById(R.id.closeButton)
 
+        Log.d("ResultBottomSheetFragment", "Views are found. ResultTextView: $resultTextView, ResultImageView: $resultImageView, CloseButton: $closeButton")
+
         val resultText = arguments?.getString(ARG_RESULT_TEXT) ?: ""
         val imageBitmap = arguments?.getParcelable<Bitmap>(ARG_IMAGE_BITMAP)
 
@@ -47,6 +50,7 @@ class ResultBottomSheetFragment : BottomSheetDialogFragment() {
         resultImageView.setImageBitmap(imageBitmap)
 
         closeButton.setOnClickListener {
+            Log.d("ResultBottomSheetFragment", "Close button clicked")
             dismiss()
         }
     }
