@@ -67,6 +67,9 @@ dependencies {
 
     implementation (libs.squareup.picasso)
 
+    // text-to-speech
+    implementation ("androidx.core:core-ktx:1.7.0")
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

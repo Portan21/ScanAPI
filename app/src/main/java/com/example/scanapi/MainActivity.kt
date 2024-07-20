@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.widget.Button
 import android.widget.ImageView
@@ -17,11 +18,14 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var useCameraButton: Button
     private lateinit var uploadFromPhotosButton: Button
+    private lateinit var textToSpeech: TextToSpeech
+    private var ttsInitialized = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
         useCameraButton = findViewById(R.id.useCameraButton)
         uploadFromPhotosButton = findViewById(R.id.uploadFromPhotosButton)
+        textToSpeech = TextToSpeech(this, this)
 
         useCameraButton.setOnClickListener {
             val intent = Intent(this, ScanActivity::class.java)
@@ -98,6 +103,7 @@ class MainActivity : AppCompatActivity() {
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+        val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
 
         resultTextView.text = resultText
 
@@ -108,6 +114,12 @@ class MainActivity : AppCompatActivity() {
         closeButton.setOnClickListener {
             Log.d("MainActivity", "Close button clicked")
             bottomSheetDialog.dismiss()
+        }
+
+        speakerButton.setOnClickListener {
+            if (ttsInitialized) {
+                textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
         }
 
         bottomSheetDialog.show()
@@ -129,6 +141,28 @@ class MainActivity : AppCompatActivity() {
         }
 
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech.setLanguage(Locale.US)
+            ttsInitialized = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+            if (!ttsInitialized) {
+                Log.e("MainActivity", "TTS initialization failed: Language not supported")
+            }
+        } else {
+            Log.e("MainActivity", "TTS initialization failed")
+            ttsInitialized = false
+        }
+    }
+
+    override fun onDestroy() {
+        // Shutdown TTS to release resources
+        if (textToSpeech != null) {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+        super.onDestroy()
     }
 
     companion object {

@@ -26,16 +26,19 @@ import android.view.View
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
+import android.speech.tts.TextToSpeech
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.IOException
 
 
-class ScanActivity : AppCompatActivity() {
+class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var previewView: PreviewView
     private lateinit var captureButton: Button
     private lateinit var backButton: Button
     private lateinit var uploadButton: Button
+    private lateinit var textToSpeech: TextToSpeech
+    private var ttsInitialized = false
 
     private var imageCapture: ImageCapture? = null
     private lateinit var roboflowService: RoboflowService
@@ -48,6 +51,8 @@ class ScanActivity : AppCompatActivity() {
         captureButton = findViewById(R.id.captureButton)
         backButton = findViewById(R.id.backButton)
         uploadButton = findViewById(R.id.uploadButton)
+
+        textToSpeech = TextToSpeech(this, this)
 
         roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
 
@@ -201,6 +206,7 @@ class ScanActivity : AppCompatActivity() {
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+        val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
 
         resultTextView.text = resultText
 
@@ -208,6 +214,12 @@ class ScanActivity : AppCompatActivity() {
         val rotatedBitmap = rotateImage(bitmap, rotationDegree)
         val resizedBitmap = resizeImageForDisplay(rotatedBitmap, 800) // Adjust max width as needed
         resultImageView.setImageBitmap(resizedBitmap)
+
+        speakerButton.setOnClickListener {
+            if (ttsInitialized) {
+                textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
 
         closeButton.setOnClickListener {
             Log.d("ScanActivity", "Close button clicked")
@@ -284,6 +296,28 @@ class ScanActivity : AppCompatActivity() {
         outputStream.close()
 
         return resizedFile
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech.setLanguage(Locale.US)
+            ttsInitialized = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+            if (!ttsInitialized) {
+                Log.e("ScanActivity", "TTS initialization failed: Language not supported")
+            }
+        } else {
+            Log.e("ScanActivity", "TTS initialization failed")
+            ttsInitialized = false
+        }
+    }
+
+    override fun onDestroy() {
+        // Shutdown TTS to release resources
+        if (textToSpeech != null) {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+        super.onDestroy()
     }
 
     private val requestPermissionLauncher =
