@@ -246,7 +246,6 @@
 
             bottomSheetDialog.setOnDismissListener {
                 resumeCamera() // Enable capture button when bottom sheet is dismissed
-                captureButton.isEnabled = true
             }
 
             bottomSheetDialog.show()
@@ -297,17 +296,17 @@
         }
 
         private fun pauseCamera() {
+            captureButton.isEnabled = false
+            uploadButton.isEnabled = false
+
             previewView.visibility = View.GONE
-            captureButton.visibility = View.GONE
-            uploadButton.visibility = View.GONE
-            backButton.visibility = View.GONE
         }
 
         private fun resumeCamera() {
+            captureButton.isEnabled = true
+            uploadButton.isEnabled = true
+
             previewView.visibility = View.VISIBLE
-            captureButton.visibility = View.VISIBLE
-            uploadButton.visibility = View.VISIBLE
-            backButton.visibility = View.VISIBLE
         }
 
         private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->

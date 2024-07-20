@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -106,8 +107,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
         val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
+        val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
         resultTextView.text = resultText
+
+        downloadButton.visibility = View.GONE
 
         val bitmap = BitmapFactory.decodeFile(imageFile.path)
         val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust max width as needed
@@ -122,6 +126,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (ttsInitialized) {
                 textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
+        }
+
+        bottomSheetDialog.setOnDismissListener {
+            downloadButton.visibility = View.VISIBLE
         }
 
         bottomSheetDialog.show()
