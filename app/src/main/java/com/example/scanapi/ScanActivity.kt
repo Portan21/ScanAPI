@@ -20,6 +20,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
 import android.Manifest
+import android.content.ContentValues
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.view.View
@@ -27,6 +28,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.IOException
 
@@ -37,11 +39,10 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var captureButton: Button
     private lateinit var backButton: Button
     private lateinit var uploadButton: Button
-    private lateinit var textToSpeech: TextToSpeech
-    private var ttsInitialized = false
 
     private var imageCapture: ImageCapture? = null
     private lateinit var roboflowService: RoboflowService
+    private lateinit var textToSpeech: TextToSpeech
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,9 +53,9 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         backButton = findViewById(R.id.backButton)
         uploadButton = findViewById(R.id.uploadButton)
 
-        textToSpeech = TextToSpeech(this, this)
-
         roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
+
+        textToSpeech = TextToSpeech(this, this)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             startCamera()
@@ -82,6 +83,17 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val imageUri = Uri.parse(imageUriString)
             val file = uriToFile(imageUri)
             processImage(file)
+        }
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech.setLanguage(Locale.US)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("ScanActivity", "Language not supported")
+            }
+        } else {
+            Log.e("ScanActivity", "Initialization failed")
         }
     }
 
@@ -207,6 +219,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
         val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
+        val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
         resultTextView.text = resultText
 
@@ -216,124 +229,102 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         resultImageView.setImageBitmap(resizedBitmap)
 
         speakerButton.setOnClickListener {
-            if (ttsInitialized) {
-                textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
-            }
+            textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+
+        downloadButton.setOnClickListener {
+            saveImageToGallery(resizedBitmap)
         }
 
         closeButton.setOnClickListener {
-            Log.d("ScanActivity", "Close button clicked")
             bottomSheetDialog.dismiss()
         }
 
         bottomSheetDialog.setOnDismissListener {
-            resumeCamera()
-            captureButton.isEnabled = true // Re-enable capture button when bottom sheet is dismissed
+            resumeCamera() // Enable capture button when bottom sheet is dismissed
+            captureButton.isEnabled = true
         }
 
         bottomSheetDialog.show()
     }
 
+    private fun resizeImage(imageFile: File, maxWidth: Int, maxHeight: Int): File {
+        val bitmap = BitmapFactory.decodeFile(imageFile.path)
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, maxWidth, maxHeight, true)
+
+        val resizedFile = File(imageFile.parent, "resized_${imageFile.name}")
+        FileOutputStream(resizedFile).use { outputStream ->
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        }
+        return resizedFile
+    }
+
+    private fun resizeImageForDisplay(bitmap: Bitmap, maxWidth: Int): Bitmap {
+        val aspectRatio = bitmap.width.toDouble() / bitmap.height.toDouble()
+        val targetWidth = maxWidth
+        val targetHeight = (targetWidth / aspectRatio).toInt()
+        return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+    }
+
+    private fun rotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
+        val matrix = Matrix().apply { postRotate(degrees) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private fun saveImageToGallery(bitmap: Bitmap) {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/MyApp")
+        }
+
+        val contentResolver = applicationContext.contentResolver
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+        uri?.let {
+            contentResolver.openOutputStream(it)?.use { outputStream ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            }
+            // Show toast message after saving the image
+            runOnUiThread {
+                Toast.makeText(this, "Image saved to gallery", Toast.LENGTH_SHORT).show()
+            }
+        } ?: Log.e("ScanActivity", "Failed to create new MediaStore entry")
+    }
+
     private fun pauseCamera() {
-        previewView.visibility = View.INVISIBLE
+        previewView.visibility = View.GONE
+        captureButton.visibility = View.GONE
+        uploadButton.visibility = View.GONE
+        backButton.visibility = View.GONE
     }
 
     private fun resumeCamera() {
         previewView.visibility = View.VISIBLE
+        captureButton.visibility = View.VISIBLE
+        uploadButton.visibility = View.VISIBLE
+        backButton.visibility = View.VISIBLE
     }
 
-    private fun rotateImageIfRequired(bitmap: Bitmap, imagePath: String): Bitmap {
-        val exif = ExifInterface(imagePath)
-        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-
-        val matrix = Matrix()
-        when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
-            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
-            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-            else -> {
-                // Apply 90-degree rotation if no valid EXIF orientation is found
-                Log.d("ScanActivity", "Applying manual rotation of 90 degrees")
-                matrix.postRotate(90f)
-            }
-        }
-
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-    }
-
-    private fun rotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
-        val matrix = Matrix()
-        matrix.postRotate(degrees)
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-    }
-
-    private fun resizeImageForDisplay(bitmap: Bitmap, maxWidth: Int): Bitmap {
-        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
-        val newWidth: Int
-        val newHeight: Int
-
-        if (aspectRatio > 1) {
-            // Landscape
-            newWidth = maxWidth
-            newHeight = (newWidth / aspectRatio).toInt()
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            startCamera()
         } else {
-            // Portrait
-            newHeight = maxWidth
-            newWidth = (newHeight * aspectRatio).toInt()
+            // Handle permission denial
         }
-
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
-    private fun resizeImage(file: File, width: Int, height: Int): File {
-        val bitmap = BitmapFactory.decodeFile(file.path)
-        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
-
-        val resizedFile = File(externalMediaDirs.first(), "resized_${file.name}")
-        val outputStream = FileOutputStream(resizedFile)
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-        outputStream.flush()
-        outputStream.close()
-
-        return resizedFile
-    }
-
-    override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
-            val result = textToSpeech.setLanguage(Locale.US)
-            ttsInitialized = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
-            if (!ttsInitialized) {
-                Log.e("ScanActivity", "TTS initialization failed: Language not supported")
-            }
+    private val requestImagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val file = uriToFile(uri)
+            processImage(file)
         } else {
-            Log.e("ScanActivity", "TTS initialization failed")
-            ttsInitialized = false
+            resumeCamera()
         }
     }
 
     override fun onDestroy() {
-        // Shutdown TTS to release resources
-        if (textToSpeech != null) {
-            textToSpeech.stop()
-            textToSpeech.shutdown()
-        }
         super.onDestroy()
+        textToSpeech.shutdown()
     }
-
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                startCamera()
-            } else {
-                Log.e("ScanActivity", "Camera permission denied")
-            }
-        }
-
-    private val requestImagePicker =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            uri?.let {
-                val file = uriToFile(it)
-                processImage(file)
-            }
-        }
 }
