@@ -232,8 +232,15 @@
         private fun displayProductDetails(className: String, imageFile: File, rotationDegree: Float) {
             lifecycleScope.launch {
                 val product = withContext(Dispatchers.IO) {
+                    Log.d("ScanActivity", "Querying product details for: $className")
                     val db = ProductDatabase.getDatabase(applicationContext)
-                    db.productDao().getProductByName(className)
+                    val product = db.productDao().getProductByName(className)
+                    if (product != null) {
+                        Log.d("ScanActivity", "Product found: ${product.name} - ${product.description}")
+                    } else {
+                        Log.d("ScanActivity", "Product not found in the database.")
+                    }
+                    product
                 }
                 val description = product?.description ?: "No details available"
                 val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"

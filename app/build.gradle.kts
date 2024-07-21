@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    id("kotlin-kapt")
 }
 
 android {
@@ -68,11 +69,18 @@ dependencies {
     implementation (libs.squareup.picasso)
 
     // text-to-speech
-    implementation ("androidx.core:core-ktx:1.7.0")
+    implementation (libs.androidx.core.ktx.v170)
 
     // Database
-    implementation ("androidx.room:room-runtime:2.4.3")
-    annotationProcessor ("androidx.room:room-compiler:2.4.3")
+    implementation ("androidx.room:room-runtime:2.6.1")
+    kapt ("androidx.room:room-compiler:2.6.1")
+
+    // Optional - Kotlin Extensions and Coroutines support for Room
+    implementation ("androidx.room:room-ktx:2.6.1")
+
+    // Coroutines
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
 
 
     implementation(libs.androidx.core.ktx)
