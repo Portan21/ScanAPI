@@ -70,6 +70,10 @@ dependencies {
     // text-to-speech
     implementation ("androidx.core:core-ktx:1.7.0")
 
+    // Database
+    implementation ("androidx.room:room-runtime:2.4.3")
+    annotationProcessor ("androidx.room:room-compiler:2.4.3")
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

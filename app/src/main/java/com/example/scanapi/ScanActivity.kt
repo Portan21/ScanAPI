@@ -31,6 +31,10 @@
     import android.widget.Toast
     import androidx.activity.result.contract.ActivityResultContracts
     import java.io.IOException
+    import androidx.lifecycle.lifecycleScope
+    import kotlinx.coroutines.Dispatchers
+    import kotlinx.coroutines.launch
+    import kotlinx.coroutines.withContext
 
 
     class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
@@ -127,12 +131,17 @@
                     }
                 }
                 runOnUiThread {
-                    showBottomSheet(resizedFile, resultText, 0f)
+                    if (inferenceResponse.predictions.isNotEmpty()) {
+                        val topPrediction = inferenceResponse.predictions[0].className
+                        displayProductDetails(topPrediction, resizedFile, 0f)
+                    } else {
+                        showBottomSheet(resizedFile, "No Result", "No details available", "No nutritional facts available", 0f)
+                    }
                 }
             }, { errorMessage ->
                 Log.e("ScanActivity", errorMessage)
                 runOnUiThread {
-                    showBottomSheet(resizedFile, "Error: $errorMessage", 0f)
+                    showBottomSheet(resizedFile, "Error: $errorMessage", "No details available", "No nutritional facts available", 0f)
                 }
             })
         }
@@ -198,12 +207,17 @@
                             }
                         }
                         runOnUiThread {
-                            showBottomSheet(resizedFile, resultText, rotationDegree)
+                            if (inferenceResponse.predictions.isNotEmpty()) {
+                                val topPrediction = inferenceResponse.predictions[0].className
+                                displayProductDetails(topPrediction, resizedFile, rotationDegree)
+                            } else {
+                                showBottomSheet(resizedFile, "No Result", "No details available", "No nutritional facts available", rotationDegree)
+                            }
                         }
                     }, { errorMessage ->
                         Log.e("ScanActivity", errorMessage)
                         runOnUiThread {
-                            showBottomSheet(resizedFile, "Error: $errorMessage", rotationDegree)
+                            showBottomSheet(resizedFile, "Error: $errorMessage", "No details available", "No nutritional facts available", rotationDegree)
                         }
                     })
                 }
@@ -214,18 +228,37 @@
             })
         }
 
-        private fun showBottomSheet(imageFile: File, resultText: String, rotationDegree: Float) {
+        // Add a method to query the product details and show the bottom sheet
+        private fun displayProductDetails(className: String, imageFile: File, rotationDegree: Float) {
+            lifecycleScope.launch {
+                val product = withContext(Dispatchers.IO) {
+                    val db = ProductDatabase.getDatabase(applicationContext)
+                    db.productDao().getProductByName(className)
+                }
+                val description = product?.description ?: "No details available"
+                val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"
+                runOnUiThread {
+                    showBottomSheet(imageFile, className, description, nutritionalFacts, rotationDegree)
+                }
+            }
+        }
+
+        private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts: String, rotationDegree: Float) {
             val bottomSheetDialog = BottomSheetDialog(this)
             val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
             bottomSheetDialog.setContentView(bottomSheetView)
 
             val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
+            val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
+            val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
             val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
             val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
             val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
             val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
             resultTextView.text = resultText
+            descriptionTextView.text = description
+            nutritionalFactsTextView.text = nutritionalFacts
 
             val bitmap = BitmapFactory.decodeFile(imageFile.path)
             val rotatedBitmap = rotateImage(bitmap, rotationDegree)
