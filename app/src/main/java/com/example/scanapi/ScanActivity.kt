@@ -273,7 +273,8 @@
             resultImageView.setImageBitmap(resizedBitmap)
 
             speakerButton.setOnClickListener {
-                textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
+                val combinedText = "$resultText. $description. $nutritionalFacts."
+                textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
 
             downloadButton.setOnClickListener {

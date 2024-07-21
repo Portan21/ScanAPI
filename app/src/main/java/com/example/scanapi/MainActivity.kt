@@ -159,7 +159,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         speakerButton.setOnClickListener {
             if (ttsInitialized) {
-                textToSpeech.speak(resultText, TextToSpeech.QUEUE_FLUSH, null, null)
+                val combinedText = "$resultText. $description. $nutritionalFacts."
+                textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }
 

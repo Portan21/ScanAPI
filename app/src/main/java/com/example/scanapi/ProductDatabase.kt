@@ -10,7 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [Product::class], version = 1, exportSchema = false)
+@Database(entities = [Product::class], version = 3, exportSchema = false)
 abstract class ProductDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
 
@@ -25,7 +25,7 @@ abstract class ProductDatabase : RoomDatabase() {
                     ProductDatabase::class.java,
                     "product_database"
                 )
-                    //.addMigrations(MIGRATION_1_2)
+//                    .addMigrations(MIGRATION_1_2)
                     .addCallback(ProductDatabaseCallback())
                     .build()
                 INSTANCE = instance
@@ -33,9 +33,13 @@ abstract class ProductDatabase : RoomDatabase() {
             }
         }
 
-//        private val MIGRATION_1_2 = object : Migration(1, 2) {
+//        private val MIGRATION_1_2 = object : Migration(2, 3) {
 //            override fun migrate(db: SupportSQLiteDatabase) {
-//                db.execSQL("ALTER TABLE product_table ADD COLUMN category TEXT")
+//                // Example update statements, you can modify them according to your requirements
+//                db.execSQL("UPDATE product_table SET description = 'Updated description for Apple' WHERE name = 'Apple'")
+//                db.execSQL("UPDATE product_table SET description = 'Updated description for Banana' WHERE name = 'Banana'")
+//                db.execSQL("UPDATE product_table SET description = 'Updated description for Datu Puti Soy Sauce 200mL. May toto si Justine' WHERE name = 'Datu Puti Soy Sauce 200mL'")
+//                // Add more update statements as needed
 //            }
 //        }
     }
@@ -65,7 +69,7 @@ abstract class ProductDatabase : RoomDatabase() {
                 ),
                 Product(
                     name = "Datu Puti Soy Sauce 200mL",
-                    description = "Soy sauce produced by Datu Puti. Toyo ni justine",
+                    description = "Soy sauce produced by Datu Puti. May toyo si justine",
                     nutritionalFacts = "Calories: 10, Carbs: 1g, Protein: 2g",
                 )
                 // Add more products as needed
