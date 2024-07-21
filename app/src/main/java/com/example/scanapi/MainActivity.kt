@@ -14,7 +14,11 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -88,28 +92,59 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
             runOnUiThread {
-                showBottomSheet(file, resultText)
+                if (inferenceResponse.predictions.isNotEmpty()) {
+                    val topPrediction = inferenceResponse.predictions[0].className
+                    displayProductDetails(topPrediction, file, 0f)
+                } else {
+                    showBottomSheet(file, "No Result", "No details available", "No nutritional facts available", 0f)
+                }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(file, "Error: $errorMessage")
+                showBottomSheet(file, "Error: $errorMessage", "No details available", "No nutritional facts available", 0f)
             }
         })
     }
 
-    private fun showBottomSheet(imageFile: File, resultText: String) {
+    // Add a method to query the product details and show the bottom sheet
+    private fun displayProductDetails(className: String, imageFile: File, rotationDegree: Float) {
+        lifecycleScope.launch {
+            val product = withContext(Dispatchers.IO) {
+                Log.d("ScanActivity", "Querying product details for: $className")
+                val db = ProductDatabase.getDatabase(applicationContext)
+                val product = db.productDao().getProductByName(className)
+                if (product != null) {
+                    Log.d("ScanActivity", "Product found: ${product.name} - ${product.description}")
+                } else {
+                    Log.d("ScanActivity", "Product not found in the database.")
+                }
+                product
+            }
+            val description = product?.description ?: "No details available"
+            val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"
+            runOnUiThread {
+                showBottomSheet(imageFile, className, description, nutritionalFacts, rotationDegree)
+            }
+        }
+    }
+
+    private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts: String, rotationDegree: Float) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
         bottomSheetDialog.setContentView(bottomSheetView)
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
+        val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
+        val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
         val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
         val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
         resultTextView.text = resultText
+        descriptionTextView.text = description
+        nutritionalFactsTextView.text = nutritionalFacts
 
         downloadButton.visibility = View.GONE
 
