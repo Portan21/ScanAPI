@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("kotlin-kapt")
+    kotlin("plugin.serialization")
 }
 
 android {
@@ -81,6 +82,14 @@ dependencies {
     // Coroutines
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+
+    // Supabase
+    implementation (platform("io.github.jan-tennert.supabase:bom:2.5.4"))
+    implementation ("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation ("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
 
     implementation(libs.androidx.core.ktx)

@@ -24,6 +24,15 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.util.Locale
+import androidx.lifecycle.lifecycleScope
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import retrofit2.HttpException
+import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
@@ -31,6 +40,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var uploadFromPhotosButton: Button
     private lateinit var textToSpeech: TextToSpeech
     private var ttsInitialized = false
+
+
+    val supabase = createSupabaseClient(
+        supabaseUrl = "https://dvsqyskvmhmbbmzkzkwi.supabase.co",
+        supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE"
+    ) {
+        install(Postgrest)
+    }
+
+    @Serializable
+    data class countries(
+        val id: Int,
+        val name: String,
+    )
+
+    @Serializable
+    data class products(
+        val id: Int,
+        val name: String,
+        val description: String,
+        val nutritionalFacts: String,
+        val category: String,
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,13 +128,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val topPrediction = inferenceResponse.predictions[0].className
                     displayProductDetails(topPrediction, file, 0f)
                 } else {
-                    showBottomSheet(file, "No Result", "No details available", "No nutritional facts available", 0f)
+                    showBottomSheet(file, "No Result", "Product Not Found", "Please try again", 0f)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(file, "Error: $errorMessage", "No details available", "No nutritional facts available", 0f)
+                showBottomSheet(file, "Error: $errorMessage", "Product Not Found", "Please try again", 0f)
             }
         })
     }
@@ -111,15 +143,37 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun displayProductDetails(className: String, imageFile: File, rotationDegree: Float) {
         lifecycleScope.launch {
             val product = withContext(Dispatchers.IO) {
-                Log.d("ScanActivity", "Querying product details for: $className")
-                val db = ProductDatabase.getDatabase(applicationContext)
-                val product = db.productDao().getProductByName(className)
-                if (product != null) {
-                    Log.d("ScanActivity", "Product found: ${product.name} - ${product.description}")
-                } else {
-                    Log.d("ScanActivity", "Product not found in the database.")
+                val encodedClassName = URLEncoder.encode(className, "UTF-8")
+                Log.d("ScanActivity", "Querying product details for: $encodedClassName")
+
+                try {
+                    // Querying Supabase
+                    val response = try {
+                        supabase.from("products").select(columns = Columns.list("id", "name", "description", "nutritionalFacts", "category")) {
+                            filter {
+                                products::name eq className
+                                //or
+                                eq("name", className)
+                            }
+                        }
+                            .decodeList<products>()
+                    } catch (e: Exception) {
+                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                        emptyList<products>() // Return an empty list in case of error
+                    }
+
+                    if (response.isNotEmpty()) {
+                        Log.d("ScanActivity", "Product found: ${response[0].name} - ${response[0].description}")
+                        response[0]
+                    } else {
+                        Log.d("ScanActivity", "Product not found in Supabase.")
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                    e.printStackTrace()
+                    null
                 }
-                product
             }
             val description = product?.description ?: "No details available"
             val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"
@@ -128,6 +182,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     }
+
+
 
     private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts: String, rotationDegree: Float) {
         val bottomSheetDialog = BottomSheetDialog(this)
