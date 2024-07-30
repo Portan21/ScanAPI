@@ -69,11 +69,6 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         install(Postgrest)
     }
 
-    @Serializable
-    data class countries(
-        val id: Int,
-        val name: String,
-    )
 
     @Serializable
     data class products(
@@ -133,11 +128,13 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val result = textToSpeech.setLanguage(Locale.US)
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("ScanActivity", "Language not supported")
+            ttsInitialized = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+            if (!ttsInitialized) {
+                Log.e("ScanActivity", "TTS initialization failed: Language not supported")
             }
         } else {
-            Log.e("ScanActivity", "Initialization failed")
+            Log.e("ScanActivity", "TTS initialization failed")
+            ttsInitialized = false
         }
     }
 
@@ -285,15 +282,15 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val response = try {
                         supabase.from("products").select(columns = Columns.list("id", "name", "description", "nutritionalFacts", "category")) {
                             filter {
-                                com.example.scanapi.MainActivity.products::name eq className
+                                products::name eq className
                                 //or
                                 eq("name", className)
                             }
                         }
-                            .decodeList<com.example.scanapi.MainActivity.products>()
+                            .decodeList<products>()
                     } catch (e: Exception) {
                         Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-                        emptyList<com.example.scanapi.MainActivity.products>() // Return an empty list in case of error
+                        emptyList<products>() // Return an empty list in case of error
                     }
 
                     if (response.isNotEmpty()) {
@@ -340,8 +337,8 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         nutritionalFactsTextView.text = nutritionalFacts
 
         if (!detected){
-            nutritionalFactsTextView.visibility = View.GONE
-            descriptionTextView.visibility = View.GONE
+           // nutritionalFactsTextView.visibility = View.GONE // Make this PLEASE TRY AGAIN
+           // descriptionTextView.visibility = View.GONE
         }
 
         if (upload){
@@ -441,6 +438,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         } ?: Log.e("ScanActivity", "Failed to create new MediaStore entry")
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
