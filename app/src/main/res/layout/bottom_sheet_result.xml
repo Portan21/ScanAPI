@@ -35,24 +35,34 @@
         android:layout_marginTop="8dp"
         android:scaleType="centerCrop" />
 
-    <Button
-        android:id="@+id/speakerButton"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Speak" />
+        android:orientation="horizontal"
+        android:layout_marginTop="20dp"
+        android:gravity="center">
 
-    <Button
-        android:id="@+id/downloadButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Download" />
+        <Button
+            android:id="@+id/downloadButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:text="Download" />
 
-    <Button
-        android:id="@+id/closeButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Close" />
+        <Button
+            android:id="@+id/speakerButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:text="Speak" />
+
+        <Button
+            android:id="@+id/closeButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Close" />
+    </LinearLayout>
 </LinearLayout>

@@ -49,11 +49,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         install(Postgrest)
     }
 
-    @Serializable
-    data class countries(
-        val id: Int,
-        val name: String,
-    )
 
     @Serializable
     data class products(

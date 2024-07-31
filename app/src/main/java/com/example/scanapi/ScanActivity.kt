@@ -175,13 +175,13 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     displayProductDetails(topPrediction, resizedFile, 0f)
                 } else {
                     detected = false
-                    showBottomSheet(resizedFile, "No Result", "Product not found", "Please try again", 0f)
+                    showBottomSheet(resizedFile, "No Result", "Product not found", "Please try again", "", 0f)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(resizedFile, "Error: $errorMessage", "No details available", "No nutritional facts available", 0f)
+                showBottomSheet(resizedFile, "Error: $errorMessage", "No details available", "No nutritional facts available", "", 0f)
             }
         })
     }
@@ -254,13 +254,13 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             displayProductDetails(topPrediction, resizedFile, rotationDegree)
                         } else {
                             detected = false;
-                            showBottomSheet(resizedFile, "No Result", "Product not found", "Please try again", rotationDegree)
+                            showBottomSheet(resizedFile, "No Result", "Product not found", "Please try again", "", rotationDegree)
                         }
                     }
                 }, { errorMessage ->
                     Log.e("ScanActivity", errorMessage)
                     runOnUiThread {
-                        showBottomSheet(resizedFile, "Error: $errorMessage", "Product not found", "Please try again", rotationDegree)
+                        showBottomSheet(resizedFile, "Error: $errorMessage", "Product not found", "Please try again", "", rotationDegree)
                     }
                 })
             }
@@ -308,15 +308,17 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             val description = product?.description ?: "No details available"
             val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"
+            val nutritionalFacts2 = "$nutritionalFacts | $nutritionalFacts | $nutritionalFacts" //////////////////////////////////////////////////////////////////////
+            val nutritionalFacts3 = "$nutritionalFacts. $nutritionalFacts. $nutritionalFacts"
             runOnUiThread {
-                showBottomSheet(imageFile, className, description, nutritionalFacts, rotationDegree)
+                showBottomSheet(imageFile, className, description, nutritionalFacts2, nutritionalFacts3, rotationDegree)
             }
         }
     }
 
 
 
-    private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts: String, rotationDegree: Float) {
+    private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts2: String, nutritionalFacts3: String, rotationDegree: Float) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
 
@@ -334,7 +336,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         resultTextView.text = resultText
         descriptionTextView.text = description
-        nutritionalFactsTextView.text = nutritionalFacts
+        nutritionalFactsTextView.text = nutritionalFacts2
 
         if (!detected){
            // nutritionalFactsTextView.visibility = View.GONE // Make this PLEASE TRY AGAIN
@@ -347,7 +349,6 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         downloadButton.setOnClickListener {
             saveImageToGallery(rotatedBitmap)
-            textToSpeech.speak("Image saved to gallery", TextToSpeech.QUEUE_FLUSH, null, null)
         }
 
         closeButton.setOnClickListener {
@@ -357,7 +358,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         speakerButton.setOnClickListener {
             if (ttsInitialized) {
-                val combinedText = "$resultText. $description. $nutritionalFacts."
+                val combinedText = "$resultText. $description. $nutritionalFacts3"
                 textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }
