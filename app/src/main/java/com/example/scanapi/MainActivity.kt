@@ -43,8 +43,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
 
     val supabase = createSupabaseClient(
-        supabaseUrl = "https://dvsqyskvmhmbbmzkzkwi.supabase.co",
-        supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE"
+        supabaseUrl = BuildConfig.SUPABASE_URL,
+        supabaseKey = BuildConfig.SUPABASE_KEY
     ) {
         install(Postgrest)
     }
@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun processImage(file: File) {
-        val roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
+        val roboflowService = RoboflowService(BuildConfig.ROBOFLOW_API_KEY)
 
         val bitmap = BitmapFactory.decodeFile(file.path)
 

@@ -18,14 +18,25 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    buildFeatures{
+        buildConfig = true
+    }
     buildTypes {
         release {
+            // Set to true when release
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "SUPABASE_URL", "\"https://dvsqyskvmhmbbmzkzkwi.supabase.co\"")
+            buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE\"")
+            buildConfigField("String", "ROBOFLOW_API_KEY", "\"4LF1NTVpUpZP66V6YLKr\"")
+        }
+        debug{
+            buildConfigField("String", "SUPABASE_URL", "\"https://dvsqyskvmhmbbmzkzkwi.supabase.co\"")
+            buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE\"")
+            buildConfigField("String", "ROBOFLOW_API_KEY", "\"4LF1NTVpUpZP66V6YLKr\"")
         }
     }
     compileOptions {

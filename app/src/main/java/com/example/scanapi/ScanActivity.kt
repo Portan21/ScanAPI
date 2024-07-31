@@ -63,8 +63,8 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var upload = false;
 
     val supabase = createSupabaseClient(
-        supabaseUrl = "https://dvsqyskvmhmbbmzkzkwi.supabase.co",
-        supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE"
+        supabaseUrl = BuildConfig.SUPABASE_URL,
+        supabaseKey = BuildConfig.SUPABASE_KEY
     ) {
         install(Postgrest)
     }
@@ -89,7 +89,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         backButton = findViewById(R.id.backButton)
         uploadButton = findViewById(R.id.uploadButton)
 
-        roboflowService = RoboflowService("4LF1NTVpUpZP66V6YLKr")
+        roboflowService = RoboflowService(BuildConfig.ROBOFLOW_API_KEY)
 
         textToSpeech = TextToSpeech(this, this)
 
