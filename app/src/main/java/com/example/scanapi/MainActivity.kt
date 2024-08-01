@@ -162,9 +162,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val detections = inferenceResponse.predictions.map {
                 Detection(it.className, it.confidence)
             }
+
+            // Remove duplicates based on className
+            val uniqueDetections = detections.distinctBy { it.className }
+
             runOnUiThread {
-                if (detections.isNotEmpty()) {
-                    showDetectionListBottomSheet(detections, compressedFile)
+                if (uniqueDetections.isNotEmpty()) {
+                    showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
                     showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
@@ -176,6 +180,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         })
     }
+
 
 
     private fun showDetectionListBottomSheet(detections: List<Detection>, imageFile: File) {
