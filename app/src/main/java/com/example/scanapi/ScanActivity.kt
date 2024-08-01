@@ -26,6 +26,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.scanapi.MainActivity.nutritionfacts
 import com.example.scanapi.MainActivity.products
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -57,6 +59,8 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var imageCapture: ImageCapture? = null
     private lateinit var roboflowService: RoboflowService
     private lateinit var textToSpeech: TextToSpeech
+    private lateinit var file : File
+
 
     private var ttsInitialized = false
 
@@ -121,7 +125,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val imageUriString = intent.getStringExtra("imageUri")
         if (imageUriString != null) {
             val imageUri = Uri.parse(imageUriString)
-            val file = uriToFile(imageUri)
+            file = uriToFile(imageUri)
             processImage(file)
         }
     }
@@ -139,13 +143,23 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    fun goBack(){
+        processImage(file)
+    }
+
     private fun uriToFile(uri: Uri): File {
         val inputStream = contentResolver.openInputStream(uri) ?: throw IOException("Unable to open input stream")
-        val file = File(externalMediaDirs.first(), "uploaded_${System.currentTimeMillis()}.jpg")
+        file = File(externalMediaDirs.first(), "uploaded_${System.currentTimeMillis()}.jpg")
         file.outputStream().use { outputStream ->
             inputStream.copyTo(outputStream)
         }
         return file
+    }
+
+    private fun compressImage(bitmap: Bitmap, outputFile: File) {
+        FileOutputStream(outputFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        }
     }
 
     private fun processImage(imageFile: File) {
@@ -159,30 +173,29 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
         }
 
-        roboflowService.uploadImage(resizedFile, { inferenceResponse ->
+        val compressedFile = File(resizedFile.parent, "compressed_${resizedFile.name}")
+        compressImage(resizedBitmap, compressedFile)
+
+        roboflowService.uploadImage(compressedFile, { inferenceResponse ->
             Log.d("ScanActivity", "Inference successful: $inferenceResponse")
-            val resultText = if (inferenceResponse.predictions.isEmpty()) {
-                "No Result"
-            } else {
-                detected = true;
-                inferenceResponse.predictions.joinToString("\n") {
-                    "Detected: ${it.className} with confidence ${it.confidence}"
-                }
+            val detections = inferenceResponse.predictions.map {
+                Detection(it.className, it.confidence)
             }
+
+            // Remove duplicates based on className
+            val uniqueDetections = detections.distinctBy { it.className }
+
             runOnUiThread {
-                if (inferenceResponse.predictions.isNotEmpty()) {
-                    detected = true;
-                    val topPrediction = inferenceResponse.predictions[0].className
-                    displayProductDetails(topPrediction, resizedFile, 0f)
+                if (uniqueDetections.isNotEmpty()) {
+                    showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
-                    detected = false
-                    showBottomSheet(resizedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
+                    showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(resizedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
+                showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
             }
         })
     }
@@ -381,6 +394,21 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun showDetectionListBottomSheet(detections: List<Detection>, imageFile: File) {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_detection_list, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+        val detectionRecyclerView = bottomSheetView.findViewById<RecyclerView>(R.id.detectionRecyclerView)
+        detectionRecyclerView.layoutManager = LinearLayoutManager(this)
+        detectionRecyclerView.adapter = DetectionAdapter(detections) { detection ->
+            bottomSheetDialog.dismiss()
+            displayProductDetails(detection.className, imageFile, 0f)
+        }
+
+        bottomSheetDialog.show()
+    }
+
 
 
     private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, rotationDegree: Float) {
@@ -393,6 +421,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+        val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
         val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
         val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
@@ -418,8 +447,15 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             saveImageToGallery(rotatedBitmap)
         }
 
+
         closeButton.setOnClickListener {
             Log.d("MainActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
+        }
+
+        backButton.setOnClickListener{
+            Log.d("MainActivity", "Back button clicked")
+            goBack()
             bottomSheetDialog.dismiss()
         }
 
@@ -440,6 +476,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         bottomSheetDialog.show()
     }
+
 
     private val requestPermissionLauncher = registerForActivityResult(RequestPermission()) { isGranted: Boolean ->
         if (isGranted) {
