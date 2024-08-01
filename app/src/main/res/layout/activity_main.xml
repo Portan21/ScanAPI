@@ -21,7 +21,7 @@
         android:layout_below="@id/productImage"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
-        android:text="Scan a Product"
+        android:text="SnapShop"
         android:textColor="#FFFFFF"
         android:textSize="32sp"
         android:textStyle="bold" />

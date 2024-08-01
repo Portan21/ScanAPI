@@ -26,6 +26,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.scanapi.MainActivity.nutritionfacts
 import com.example.scanapi.MainActivity.products
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import io.github.jan.supabase.createSupabaseClient
@@ -175,13 +176,13 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     displayProductDetails(topPrediction, resizedFile, 0f)
                 } else {
                     detected = false
-                    showBottomSheet(resizedFile, "No Result", "Product not found", "Please try again", "", 0f)
+                    showBottomSheet(resizedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(resizedFile, "Error: $errorMessage", "No details available", "No nutritional facts available", "", 0f)
+                showBottomSheet(resizedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
             }
         })
     }
@@ -254,13 +255,13 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             displayProductDetails(topPrediction, resizedFile, rotationDegree)
                         } else {
                             detected = false;
-                            showBottomSheet(resizedFile, "No Result", "Product not found", "Please try again", "", rotationDegree)
+                            showBottomSheet(resizedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, rotationDegree)
                         }
                     }
                 }, { errorMessage ->
                     Log.e("ScanActivity", errorMessage)
                     runOnUiThread {
-                        showBottomSheet(resizedFile, "Error: $errorMessage", "Product not found", "Please try again", "", rotationDegree)
+                        showBottomSheet(resizedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, rotationDegree)
                     }
                 })
             }
@@ -280,21 +281,22 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 try {
                     // Querying Supabase
                     val response = try {
-                        supabase.from("products").select(columns = Columns.list("id", "name", "description", "nutritionalFacts", "category")) {
+                        supabase.from("products").select(columns = Columns.list("productid", "prodname", "categoryid", "description", "ingredient")) {
                             filter {
-                                products::name eq className
+                                com.example.scanapi.MainActivity.products::prodname eq className
                                 //or
-                                eq("name", className)
+                                eq("prodname", className)
                             }
                         }
-                            .decodeList<products>()
+                            .decodeList<com.example.scanapi.MainActivity.products>()
                     } catch (e: Exception) {
                         Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-                        emptyList<products>() // Return an empty list in case of error
+                        emptyList<com.example.scanapi.MainActivity.products>() // Return an empty list in case of error
                     }
 
+
                     if (response.isNotEmpty()) {
-                        Log.d("ScanActivity", "Product found: ${response[0].name} - ${response[0].description}")
+                        Log.d("ScanActivity", "Product found: ${response[0].prodname} - ${response[0].description}")
                         response[0]
                     } else {
                         Log.d("ScanActivity", "Product not found in Supabase.")
@@ -306,24 +308,88 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     null
                 }
             }
+            val productid = product?.productid ?: "No details available"
+            val productName = product?.prodname ?: "No details available"
             val description = product?.description ?: "No details available"
-            val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"
-            val nutritionalFacts2 = "$nutritionalFacts | $nutritionalFacts | $nutritionalFacts" //////////////////////////////////////////////////////////////////////
-            val nutritionalFacts3 = "$nutritionalFacts. $nutritionalFacts. $nutritionalFacts"
+            val ingredients = product?.ingredient ?: "No nutritional facts available"
+
+            val product2 = withContext(Dispatchers.IO) {
+                val encodedClassName = URLEncoder.encode(className, "UTF-8")
+                Log.d("ScanActivity", "Querying product details for: $encodedClassName")
+
+                try {
+                    // Querying Supabase
+                    val response = try {
+                        supabase.from("nutritionalfacts").select(columns = Columns.list("productid", "servingsize", "amtofserving", "calorie", "carbohydrate", "protein", "fat")) {
+                            filter {
+                                nutritionfacts::productid eq productid
+                                //or
+                                eq("productid", productid)
+                            }
+                        }
+                            .decodeList<nutritionfacts>()
+                    } catch (e: Exception) {
+                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                        emptyList<nutritionfacts>() // Return an empty list in case of error
+                    }
+
+
+                    if (response.isNotEmpty()) {
+                        Log.d("ScanActivity", "Product found: ${response[0].servingsize} - ${response[0].amtofserving}")
+                        response[0]
+                    } else {
+                        Log.d("ScanActivity", "Product not found in Supabase.")
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                    e.printStackTrace()
+                    null
+                }
+            }
+            val servingsize = product2?.servingsize ?: ""
+            val amtofserving = product2?.amtofserving ?: 0.0
+            val calorie = product2?.calorie ?: 0.0
+            val carbohydrate = product2?.carbohydrate ?: 0.0
+            val protein = product2?.protein ?: 0.0
+            val fat = product2?.fat ?: 0.0
+//            val product2 = withContext(Dispatchers.IO) {
+//                try {
+//                    val response2 = try {
+//                        supabase.from("nutritionalfacts").select(columns = Columns.list("servingsize", "amtofserving", "calories", "carbohydrate", "protein", "fat")
+//                        ) {
+//                            filter {
+//                                nutritionfacts::productid eq productid
+//                                //or
+//                                eq("productid", productid)
+//                            }
+//                        }
+//                            .decodeList<nutritionfacts>()
+//                    } catch (e: Exception) {
+//                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+//                        emptyList<nutritionfacts>() // Return an empty list in case of error
+//                    }
+//                } catch (e: Exception) {
+//                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+//                    e.printStackTrace()
+//                    null
+//                }
+//            }
             runOnUiThread {
-                showBottomSheet(imageFile, className, description, nutritionalFacts2, nutritionalFacts3, rotationDegree)
+                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat, rotationDegree)
             }
         }
     }
 
 
 
-    private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts2: String, nutritionalFacts3: String, rotationDegree: Float) {
+    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, rotationDegree: Float) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
+        val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
         val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
@@ -334,13 +400,14 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val rotatedBitmap = rotateImage(bitmap, rotationDegree)
         resultImageView.setImageBitmap(rotatedBitmap)
 
-        resultTextView.text = resultText
+        resultTextView.text = productName
         descriptionTextView.text = description
-        nutritionalFactsTextView.text = nutritionalFacts2
+        ingredientsTextView.text = ingredients
+        val allNutritionFacts = "Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
+        nutritionalFactsTextView.text = allNutritionFacts
 
         if (!detected){
-           // nutritionalFactsTextView.visibility = View.GONE // Make this PLEASE TRY AGAIN
-           // descriptionTextView.visibility = View.GONE
+            nutritionalFactsTextView.visibility = View.GONE
         }
 
         if (upload){
@@ -357,8 +424,12 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         speakerButton.setOnClickListener {
-            if (ttsInitialized) {
-                val combinedText = "$resultText. $description. $nutritionalFacts3"
+            if (ttsInitialized && detected) {
+                val combinedText = "$productName. $description. Ingredients: $ingredients. Serving Size: $servingsize. Serving Amount: $amtofserving. Calorie: $calorie. carbohydrate: $carbohydrate. protein: $protein. fat: $fat.\""
+                textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+            else if (ttsInitialized){
+                val combinedText = "$productName. $description. $ingredients."
                 textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }

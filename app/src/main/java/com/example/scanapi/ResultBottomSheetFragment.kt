@@ -31,17 +31,21 @@ class ResultBottomSheetFragment : BottomSheetDialogFragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        Log.d("ResultBottomSheetFragment", "Inflating layout")
         return inflater.inflate(R.layout.bottom_sheet_result, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        Log.d("ResultBottomSheetFragment", "onViewCreated called")
+
         val resultTextView: TextView = view.findViewById(R.id.resultTextView)
         val resultImageView: ImageView = view.findViewById(R.id.resultImageView)
         val closeButton: Button = view.findViewById(R.id.closeButton)
+        val backButton: Button = view.findViewById(R.id.closeButton)
 
-        Log.d("ResultBottomSheetFragment", "Views are found. ResultTextView: $resultTextView, ResultImageView: $resultImageView, CloseButton: $closeButton")
+        Log.d("ResultBottomSheetFragment", "Views initialized")
 
         val resultText = arguments?.getString(ARG_RESULT_TEXT) ?: ""
         val imageBitmap = arguments?.getParcelable<Bitmap>(ARG_IMAGE_BITMAP)
@@ -52,6 +56,12 @@ class ResultBottomSheetFragment : BottomSheetDialogFragment() {
         closeButton.setOnClickListener {
             Log.d("ResultBottomSheetFragment", "Close button clicked")
             dismiss()
+        }
+
+        backButton.setOnClickListener {
+            Log.d("ResultBottomSheetFragment", "Back button clicked")
+            dismiss()
+            (activity as? MainActivity)?.goBack()
         }
     }
 }

@@ -29,13 +29,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "SUPABASE_URL", "\"https://dvsqyskvmhmbbmzkzkwi.supabase.co\"")
-            buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE\"")
+            buildConfigField("String", "SUPABASE_URL", "\"https://ovlwakimblgemkcvoivj.supabase.co\"")
+            buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92bHdha2ltYmxnZW1rY3ZvaXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMzkzNDEsImV4cCI6MjAzNzgxNTM0MX0.2ftfAcp-vprOsaH92vPhO5iSsYME0nSA9fOoH-RT-tE\"")
             buildConfigField("String", "ROBOFLOW_API_KEY", "\"4LF1NTVpUpZP66V6YLKr\"")
         }
         debug{
-            buildConfigField("String", "SUPABASE_URL", "\"https://dvsqyskvmhmbbmzkzkwi.supabase.co\"")
-            buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3F5c2t2bWhtYmJtemt6a3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMTg5MTksImV4cCI6MjAzNzc5NDkxOX0.ROEJkirzfB1QGXcC98oJyCzytRoHtjg_jypFUNplrwE\"")
+            buildConfigField("String", "SUPABASE_URL", "\"https://ovlwakimblgemkcvoivj.supabase.co\"")
+            buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92bHdha2ltYmxnZW1rY3ZvaXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMzkzNDEsImV4cCI6MjAzNzgxNTM0MX0.2ftfAcp-vprOsaH92vPhO5iSsYME0nSA9fOoH-RT-tE\"")
             buildConfigField("String", "ROBOFLOW_API_KEY", "\"4LF1NTVpUpZP66V6YLKr\"")
         }
     }

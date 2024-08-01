@@ -25,6 +25,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.Locale
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -39,7 +41,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var useCameraButton: Button
     private lateinit var uploadFromPhotosButton: Button
     private lateinit var textToSpeech: TextToSpeech
+    private lateinit var file: File
     private var ttsInitialized = false
+
+    private var detected = false
 
 
     val supabase = createSupabaseClient(
@@ -52,11 +57,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     @Serializable
     data class products(
-        val id: Int,
-        val name: String,
+        val productid: Int,
+        val prodname: String,
+        val categoryid: Int,
         val description: String,
-        val nutritionalFacts: String,
-        val category: String,
+        val ingredient: String,
+    )
+
+    @Serializable
+    data class nutritionfacts(
+        val productid: Int,
+        val servingsize: String,
+        val amtofserving: Double,
+        val calorie: Double,
+        val carbohydrate: Double,
+        val protein: Double,
+        val fat: Double
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,10 +105,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val imageUri = data?.data
             if (imageUri != null) {
                 // Convert URI to File and upload it
-                val file = uriToFile(imageUri)
+                file = uriToFile(imageUri)
                 processImage(file)
             }
         }
+    }
+
+    fun goBack(){
+        processImage(file)
     }
 
     private fun uriToFile(uri: Uri): File {
@@ -104,38 +124,78 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return file
     }
 
+    private fun resizeImage(imageFile: File, maxWidth: Int, maxHeight: Int): Bitmap {
+        val options = BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        BitmapFactory.decodeFile(imageFile.path, options)
+        val (srcWidth, srcHeight) = options.outWidth to options.outHeight
+
+        var inSampleSize = 1
+        if (srcHeight > maxHeight || srcWidth > maxWidth) {
+            val halfHeight: Int = srcHeight / 2
+            val halfWidth: Int = srcWidth / 2
+            while (halfHeight / inSampleSize > maxHeight && halfWidth / inSampleSize > maxWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        options.inJustDecodeBounds = false
+        options.inSampleSize = inSampleSize
+        return BitmapFactory.decodeFile(imageFile.path, options)
+    }
+
+    private fun compressImage(bitmap: Bitmap, outputFile: File) {
+        FileOutputStream(outputFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        }
+    }
+
     private fun processImage(file: File) {
+        val resizedBitmap = resizeImage(file, 640, 480) // Resize to desired dimensions
+        val compressedFile = File(file.parent, "compressed_${file.name}")
+        compressImage(resizedBitmap, compressedFile)
+
         val roboflowService = RoboflowService(BuildConfig.ROBOFLOW_API_KEY)
 
-        val bitmap = BitmapFactory.decodeFile(file.path)
-
-        roboflowService.uploadImage(file, { inferenceResponse ->
+        roboflowService.uploadImage(compressedFile, { inferenceResponse ->
             Log.d("ScanActivity", "Inference successful: $inferenceResponse")
-            val resultText = if (inferenceResponse.predictions.isEmpty()) {
-                "No Result"
-            } else {
-                inferenceResponse.predictions.joinToString("\n") {
-                    "Detected: ${it.className} with confidence ${it.confidence}"
-                }
+            val detections = inferenceResponse.predictions.map {
+                Detection(it.className, it.confidence)
             }
             runOnUiThread {
-                if (inferenceResponse.predictions.isNotEmpty()) {
-                    val topPrediction = inferenceResponse.predictions[0].className
-                    displayProductDetails(topPrediction, file, 0f)
+                if (detections.isNotEmpty()) {
+                    showDetectionListBottomSheet(detections, compressedFile)
                 } else {
-                    showBottomSheet(file, "No Result", "Product Not Found", "Please try again", 0f)
+                    showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(file, "Error: $errorMessage", "Product Not Found", "Please try again", 0f)
+                showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
             }
         })
     }
 
+
+    private fun showDetectionListBottomSheet(detections: List<Detection>, imageFile: File) {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_detection_list, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+        val detectionRecyclerView = bottomSheetView.findViewById<RecyclerView>(R.id.detectionRecyclerView)
+        detectionRecyclerView.layoutManager = LinearLayoutManager(this)
+        detectionRecyclerView.adapter = DetectionAdapter(detections) { detection ->
+            bottomSheetDialog.dismiss()
+            displayProductDetails(detection.className, imageFile)
+        }
+
+        bottomSheetDialog.show()
+    }
+
+
     // Add a method to query the product details and show the bottom sheet
-    private fun displayProductDetails(className: String, imageFile: File, rotationDegree: Float) {
+    private fun displayProductDetails(className: String, imageFile: File) {
         lifecycleScope.launch {
             val product = withContext(Dispatchers.IO) {
                 val encodedClassName = URLEncoder.encode(className, "UTF-8")
@@ -144,11 +204,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 try {
                     // Querying Supabase
                     val response = try {
-                        supabase.from("products").select(columns = Columns.list("id", "name", "description", "nutritionalFacts", "category")) {
+                            supabase.from("products").select(columns = Columns.list("productid", "prodname", "categoryid", "description", "ingredient")) {
                             filter {
-                                products::name eq className
+                                products::prodname eq className
                                 //or
-                                eq("name", className)
+                                eq("prodname", className)
                             }
                         }
                             .decodeList<products>()
@@ -157,8 +217,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         emptyList<products>() // Return an empty list in case of error
                     }
 
+
                     if (response.isNotEmpty()) {
-                        Log.d("ScanActivity", "Product found: ${response[0].name} - ${response[0].description}")
+                        Log.d("ScanActivity", "Product found: ${response[0].prodname} - ${response[0].description}")
                         response[0]
                     } else {
                         Log.d("ScanActivity", "Product not found in Supabase.")
@@ -170,34 +231,107 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     null
                 }
             }
+            val productid = product?.productid ?: "No details available"
+            val productName = product?.prodname ?: "No details available"
             val description = product?.description ?: "No details available"
-            val nutritionalFacts = product?.nutritionalFacts ?: "No nutritional facts available"
+            val ingredients = product?.ingredient ?: "No nutritional facts available"
+
+            val product2 = withContext(Dispatchers.IO) {
+                val encodedClassName = URLEncoder.encode(className, "UTF-8")
+                Log.d("ScanActivity", "Querying product details for: $encodedClassName")
+
+                try {
+                    // Querying Supabase
+                    val response = try {
+                        supabase.from("nutritionalfacts").select(columns = Columns.list("productid", "servingsize", "amtofserving", "calorie", "carbohydrate", "protein", "fat")) {
+                            filter {
+                                nutritionfacts::productid eq productid
+                                //or
+                                eq("productid", productid)
+                            }
+                        }
+                            .decodeList<nutritionfacts>()
+                    } catch (e: Exception) {
+                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                        emptyList<nutritionfacts>() // Return an empty list in case of error
+                    }
+
+
+                    if (response.isNotEmpty()) {
+                        Log.d("ScanActivity", "Product found: ${response[0].servingsize} - ${response[0].amtofserving}")
+                        response[0]
+                    } else {
+                        Log.d("ScanActivity", "Product not found in Supabase.")
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                    e.printStackTrace()
+                    null
+                }
+            }
+            val servingsize = product2?.servingsize ?: ""
+            val amtofserving = product2?.amtofserving ?: 0.0
+            val calorie = product2?.calorie ?: 0.0
+            val carbohydrate = product2?.carbohydrate ?: 0.0
+            val protein = product2?.protein ?: 0.0
+            val fat = product2?.fat ?: 0.0
+//            val product2 = withContext(Dispatchers.IO) {
+//                try {
+//                    val response2 = try {
+//                        supabase.from("nutritionalfacts").select(columns = Columns.list("servingsize", "amtofserving", "calories", "carbohydrate", "protein", "fat")
+//                        ) {
+//                            filter {
+//                                nutritionfacts::productid eq productid
+//                                //or
+//                                eq("productid", productid)
+//                            }
+//                        }
+//                            .decodeList<nutritionfacts>()
+//                    } catch (e: Exception) {
+//                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+//                        emptyList<nutritionfacts>() // Return an empty list in case of error
+//                    }
+//                } catch (e: Exception) {
+//                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+//                    e.printStackTrace()
+//                    null
+//                }
+//            }
             runOnUiThread {
-                showBottomSheet(imageFile, className, description, nutritionalFacts, rotationDegree)
+                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat)
             }
         }
     }
 
 
 
-    private fun showBottomSheet(imageFile: File, resultText: String, description: String, nutritionalFacts: String, rotationDegree: Float) {
+    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
         bottomSheetDialog.setContentView(bottomSheetView)
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
+        val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
         val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+        val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
         val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
         val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
-        resultTextView.text = resultText
+        resultTextView.text = productName
         descriptionTextView.text = description
-        nutritionalFactsTextView.text = nutritionalFacts
+        ingredientsTextView.text = "Ingredients: $ingredients"
+        val allNutritionFacts = "Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
+        nutritionalFactsTextView.text = allNutritionFacts
 
         downloadButton.visibility = View.GONE
+
+        if(!detected){
+            nutritionalFactsTextView.visibility = View.GONE
+        }
 
         val bitmap = BitmapFactory.decodeFile(imageFile.path)
         val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust max width as needed
@@ -208,9 +342,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             bottomSheetDialog.dismiss()
         }
 
+        backButton.setOnClickListener{
+            Log.d("MainActivity", "Back button clicked")
+            goBack()
+            bottomSheetDialog.dismiss()
+        }
+
         speakerButton.setOnClickListener {
-            if (ttsInitialized) {
-                val combinedText = "$resultText. $description. $nutritionalFacts."
+            if (ttsInitialized && detected) {
+                val combinedText = "$productName. $description. Ingredients: $ingredients. Serving Size: $servingsize. Serving Amount: $amtofserving. Calorie: $calorie. carbohydrate: $carbohydrate. protein: $protein. fat: $fat."
+                textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+            else if (ttsInitialized){
+                val combinedText = "$productName. $description. $ingredients."
                 textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }

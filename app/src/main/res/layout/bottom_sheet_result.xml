@@ -21,6 +21,14 @@
         android:text="Description" />
 
     <TextView
+        android:id="@+id/ingredientsTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="8dp"
+        android:text="Ingredients" />
+
+    <TextView
         android:id="@+id/nutritionalFactsTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -41,6 +49,14 @@
         android:orientation="horizontal"
         android:layout_marginTop="20dp"
         android:gravity="center">
+
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:text="Back" />
 
         <Button
             android:id="@+id/downloadButton"
