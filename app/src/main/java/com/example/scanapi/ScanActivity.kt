@@ -407,6 +407,13 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         bottomSheetDialog.show()
+
+        val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
+
+        closeButton.setOnClickListener {
+            Log.d("ScanActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
+        }
     }
 
 

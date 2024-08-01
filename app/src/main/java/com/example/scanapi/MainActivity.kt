@@ -196,6 +196,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         bottomSheetDialog.show()
+
+        val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
+
+        closeButton.setOnClickListener {
+            Log.d("MainActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
+        }
     }
 
 
