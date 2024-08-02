@@ -168,14 +168,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             runOnUiThread {
                 if (uniqueDetections.isNotEmpty()) {
+                    detected = true
                     showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
+                    detected = false
                     showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
+                detected = false
                 showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
             }
         })
@@ -288,28 +291,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val carbohydrate = product2?.carbohydrate ?: 0.0
             val protein = product2?.protein ?: 0.0
             val fat = product2?.fat ?: 0.0
-//            val product2 = withContext(Dispatchers.IO) {
-//                try {
-//                    val response2 = try {
-//                        supabase.from("nutritionalfacts").select(columns = Columns.list("servingsize", "amtofserving", "calories", "carbohydrate", "protein", "fat")
-//                        ) {
-//                            filter {
-//                                nutritionfacts::productid eq productid
-//                                //or
-//                                eq("productid", productid)
-//                            }
-//                        }
-//                            .decodeList<nutritionfacts>()
-//                    } catch (e: Exception) {
-//                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-//                        emptyList<nutritionfacts>() // Return an empty list in case of error
-//                    }
-//                } catch (e: Exception) {
-//                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-//                    e.printStackTrace()
-//                    null
-//                }
-//            }
             runOnUiThread {
                 showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat)
             }
@@ -335,13 +316,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         resultTextView.text = productName
         descriptionTextView.text = description
-        ingredientsTextView.text = "Ingredients: $ingredients"
-        val allNutritionFacts = "Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
+        ingredientsTextView.text = "(INGREDIENTS) $ingredients"
+        val allNutritionFacts = "(NUTRITIONAL FACTS) Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
         nutritionalFactsTextView.text = allNutritionFacts
 
         downloadButton.visibility = View.GONE
 
         if(!detected){
+            Log.d("MainActivity", "Close button clicked")
+            Log.d("MainActivity", "Close button clicked")
+            Log.d("MainActivity", "Close button clicked")
             nutritionalFactsTextView.visibility = View.GONE
         }
 
