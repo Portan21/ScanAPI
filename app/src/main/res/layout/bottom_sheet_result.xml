@@ -5,43 +5,162 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <ImageView
+        android:id="@+id/resultImageView"
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:scaleType="centerInside" />
+
     <TextView
         android:id="@+id/resultTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceHeadline6"
+        android:textSize="26sp"
         android:text="Result" />
+
+    <TextView
+        android:id="@+id/descriptionDisplayTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="4dp"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:text="Description" />
 
     <TextView
         android:id="@+id/descriptionTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceBody1"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="2dp"
         android:text="Description" />
+
+    <TextView
+        android:id="@+id/ingredientsDisplayTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="8dp"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:text="Ingredients" />
 
     <TextView
         android:id="@+id/ingredientsTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceBody1"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="2dp"
         android:text="Ingredients" />
 
     <TextView
-        android:id="@+id/nutritionalFactsTextView"
+        android:id="@+id/nutritionalFactsDisplayTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceBody1"
         android:layout_marginTop="8dp"
+        android:textStyle="bold"
+        android:textSize="20sp"
         android:text="Nutritional Facts" />
 
-    <ImageView
-        android:id="@+id/resultImageView"
+    <TextView
+        android:id="@+id/servingSizeTextView"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="2dp"
+        android:text="Seving Size" />
+
+    <TextView
+        android:id="@+id/amtOfServingTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="2dp"
+        android:text="Seving Amount" />
+
+    <TextView
+        android:id="@+id/CalorieTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="2dp"
+        android:text="Calorie" />
+
+    <TextView
+        android:id="@+id/carbohydrateTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="2dp"
+        android:text="Carbohydrate" />
+
+    <TextView
+        android:id="@+id/proteinTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="2dp"
+        android:text="Protein" />
+
+    <TextView
+        android:id="@+id/fatTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:layout_marginTop="2dp"
+        android:text="Fat" />
+
+    <TextView
+        android:id="@+id/storeDisplayTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBody1"
         android:layout_marginTop="8dp"
-        android:scaleType="centerCrop" />
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:text="Availability" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="2dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/storenameTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:layout_marginEnd="10dp"
+            android:text="Store Name" />
+
+        <TextView
+            android:id="@+id/priceTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:layout_marginEnd="10dp"
+            android:text="Price:" />
+
+        <TextView
+            android:id="@+id/stockTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:layout_marginEnd="10dp"
+            android:text="Stock" />
+
+    </LinearLayout>
+
 
     <LinearLayout
         android:layout_width="match_parent"

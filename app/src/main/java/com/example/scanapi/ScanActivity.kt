@@ -429,7 +429,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
         val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
-        val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
+        val nutritionalFactsDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsDisplayTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
         val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
@@ -444,10 +444,10 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         descriptionTextView.text = description
         ingredientsTextView.text = ingredients
         val allNutritionFacts = "Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
-        nutritionalFactsTextView.text = allNutritionFacts
+        nutritionalFactsDisplayTextView.text = allNutritionFacts
 
         if (!detected){
-            nutritionalFactsTextView.visibility = View.GONE
+            nutritionalFactsDisplayTextView.visibility = View.GONE
         }
 
         if (upload){

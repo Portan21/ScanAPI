@@ -32,6 +32,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import retrofit2.HttpException
 import java.net.URLEncoder
@@ -73,6 +74,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val carbohydrate: Double,
         val protein: Double,
         val fat: Double
+    )
+
+    @Serializable
+    data class branch(
+        val productid: Int,
+        val servingsize: String,
+        val amtofserving: Double,
+        val calorie: Double,
+        val carbohydrate: Double,
+        val protein: Double,
+        val fat: Double
+    )
+
+    @Serializable
+    data class branchproduct(
+        val branchproductid: Int,
+        val branchid: Int,
+        val productid: Int,
+        val price: Double,
+        val stock: Int,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -172,14 +193,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
                     detected = false
-                    showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
+                    showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
                 detected = false
-                showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0)
+                showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0)
             }
         })
     }
@@ -295,15 +316,54 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val carbohydrate = product2?.carbohydrate ?: 0.0
             val protein = product2?.protein ?: 0.0
             val fat = product2?.fat ?: 0.0
+
+            val product3 = withContext(Dispatchers.IO) {
+                val encodedClassName = URLEncoder.encode(className, "UTF-8")
+                Log.d("ScanActivity", "Querying product details for: $encodedClassName")
+
+                try {
+                    // Querying Supabase
+                    val response = try {
+                        supabase.from("branchproducts").select(columns = Columns.list("branchproductid", "branchid", "productid", "price", "stock")) {
+                            filter {
+                                branchproduct::productid eq productid
+                                //or
+                                eq("productid", productid)
+                            }
+                        }
+                            .decodeList<branchproduct>()
+                    } catch (e: Exception) {
+                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                        emptyList<branchproduct>() // Return an empty list in case of error
+                    }
+
+
+                    if (response.isNotEmpty()) {
+                        Log.d("ScanActivity", "Product found: ${response[1].branchid} - ${response[0].productid}")
+                        response[0]
+                    } else {
+                        Log.d("ScanActivity", "Product not found in Supabase.")
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                    e.printStackTrace()
+                    null
+                }
+            }
+            val price = product3?.price ?: 0.0
+            val stock = product3?.stock ?: 0
+
+
             runOnUiThread {
-                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat)
+                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat, price, stock)
             }
         }
     }
 
 
 
-    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double) {
+    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, price : Double, stock : Int) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
         bottomSheetDialog.setContentView(bottomSheetView)
@@ -311,7 +371,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
         val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
-        val nutritionalFactsTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsTextView)
+        val nutritionalFactsDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsDisplayTextView)
+        val servingSizeTextView = bottomSheetView.findViewById<TextView>(R.id.servingSizeTextView)
+        val amtOfServingTextView = bottomSheetView.findViewById<TextView>(R.id.amtOfServingTextView)
+        val CalorieTextView = bottomSheetView.findViewById<TextView>(R.id.CalorieTextView)
+        val carbohydrateTextView = bottomSheetView.findViewById<TextView>(R.id.carbohydrateTextView)
+        val proteinTextView = bottomSheetView.findViewById<TextView>(R.id.proteinTextView)
+        val fatTextView = bottomSheetView.findViewById<TextView>(R.id.fatTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
         val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
@@ -320,17 +386,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         resultTextView.text = productName
         descriptionTextView.text = description
-        ingredientsTextView.text = "(INGREDIENTS) $ingredients"
-        val allNutritionFacts = "(NUTRITIONAL FACTS) Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
-        nutritionalFactsTextView.text = allNutritionFacts
+        ingredientsTextView.text = ingredients
+        servingSizeTextView.text = "Serving Size: $servingsize"
+        amtOfServingTextView.text = "Serving Amount: $amtofserving"
+        CalorieTextView.text = "Calorie: $calorie"
+        carbohydrateTextView.text = "Carbohydrate: $carbohydrate"
+        proteinTextView.text = "Protein: $protein"
+        fatTextView.text = "Fat $fat"
 
         downloadButton.visibility = View.GONE
 
         if(!detected){
-            Log.d("MainActivity", "Close button clicked")
-            Log.d("MainActivity", "Close button clicked")
-            Log.d("MainActivity", "Close button clicked")
-            nutritionalFactsTextView.visibility = View.GONE
+            nutritionalFactsDisplayTextView.visibility = View.GONE
+            servingSizeTextView.visibility = View.GONE
+            amtOfServingTextView.visibility = View.GONE
+            CalorieTextView.visibility = View.GONE
+            carbohydrateTextView.visibility = View.GONE
+            proteinTextView.visibility = View.GONE
+            fatTextView.visibility = View.GONE
         }
 
         val bitmap = BitmapFactory.decodeFile(imageFile.path)
