@@ -27,6 +27,7 @@ import java.util.Locale
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -368,6 +369,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
         bottomSheetDialog.setContentView(bottomSheetView)
 
+
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
         val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
@@ -437,6 +439,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         bottomSheetDialog.show()
+        val bottomSheet = bottomSheetDialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+        bottomSheet?.let { sheet ->
+            val behavior = BottomSheetBehavior.from(sheet)
+            behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
     }
 
     private fun resizeImageForDisplay(bitmap: Bitmap, maxWidth: Int): Bitmap {
