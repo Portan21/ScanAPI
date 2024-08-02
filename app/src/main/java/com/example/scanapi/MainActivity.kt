@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import retrofit2.HttpException
+import setHeightBasedOnChildren
 import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
@@ -197,12 +198,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
                     detected = false
+                    errorBottomSheet(file)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
                 detected = false
+                errorBottomSheet(file)
             }
         })
     }
@@ -376,7 +379,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         val storeRecyclerView: RecyclerView = bottomSheetView.findViewById(R.id.storeRecyclerView)
         storeRecyclerView.layoutManager = LinearLayoutManager(this)
-        storeRecyclerView.adapter = StoreAdapter(stores)
+        val storeAdapter = StoreAdapter(stores)
+        storeRecyclerView.adapter = storeAdapter
+        storeRecyclerView.setHeightBasedOnChildren()
 
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
@@ -441,6 +446,72 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val combinedText = "$productName. $description. $ingredients."
                 textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
+        }
+
+        bottomSheetDialog.setOnDismissListener {
+            downloadButton.visibility = View.VISIBLE
+        }
+
+        bottomSheetDialog.show()
+        val bottomSheet = bottomSheetDialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+        bottomSheet?.let { sheet ->
+            val behavior = BottomSheetBehavior.from(sheet)
+            behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+    }
+
+    private fun errorBottomSheet(imageFile: File){
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+
+        val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
+        val descriptionDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionDisplayTextView)
+        val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
+        val ingredientDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsDisplayTextView)
+        val storeDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.storeDisplayTextView)
+        val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
+        val nutritionalFactsDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsDisplayTextView)
+        val servingSizeTextView = bottomSheetView.findViewById<TextView>(R.id.servingSizeTextView)
+        val amtOfServingTextView = bottomSheetView.findViewById<TextView>(R.id.amtOfServingTextView)
+        val calorieTextView = bottomSheetView.findViewById<TextView>(R.id.CalorieTextView)
+        val carbohydrateTextView = bottomSheetView.findViewById<TextView>(R.id.carbohydrateTextView)
+        val proteinTextView = bottomSheetView.findViewById<TextView>(R.id.proteinTextView)
+        val fatTextView = bottomSheetView.findViewById<TextView>(R.id.fatTextView)
+        val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
+        val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+        val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
+        val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
+        val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
+
+        resultTextView.text = "Product Not Found"
+        descriptionDisplayTextView.text = "Please try again"
+
+
+        downloadButton.visibility = View.GONE
+        speakerButton.visibility = View.GONE
+        descriptionTextView.visibility = View.GONE
+        downloadButton.visibility = View.GONE
+        storeDisplayTextView.visibility = View.GONE
+        ingredientDisplayTextView.visibility = View.GONE
+        ingredientsTextView.visibility = View.GONE
+        backButton.visibility = View.GONE
+        nutritionalFactsDisplayTextView.visibility = View.GONE
+        servingSizeTextView.visibility = View.GONE
+        amtOfServingTextView.visibility = View.GONE
+        calorieTextView.visibility = View.GONE
+        carbohydrateTextView.visibility = View.GONE
+        proteinTextView.visibility = View.GONE
+        fatTextView.visibility = View.GONE
+
+        val bitmap = BitmapFactory.decodeFile(imageFile.path)
+        val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust max width as needed
+        resultImageView.setImageBitmap(resizedBitmap)
+
+        closeButton.setOnClickListener {
+            Log.d("MainActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
         }
 
         bottomSheetDialog.setOnDismissListener {

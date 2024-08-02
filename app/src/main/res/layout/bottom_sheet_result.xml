@@ -32,18 +32,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceHeadline6"
-                android:textSize="26sp"
+                android:textSize="30sp"
                 android:text="Result" />
 
             <TextView
                 android:id="@+id/descriptionDisplayTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Description"
                 android:textAppearance="?attr/textAppearanceBody1"
-                android:layout_marginTop="4dp"
-                android:textStyle="bold"
-                android:textSize="20sp"
-                android:text="Description" />
+                android:textSize="24sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/descriptionTextView"
@@ -58,9 +58,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBody1"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="12dp"
                 android:textStyle="bold"
-                android:textSize="20sp"
+                android:textSize="24sp"
                 android:text="Ingredients" />
 
             <TextView
@@ -76,9 +76,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBody1"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="12dp"
                 android:textStyle="bold"
-                android:textSize="20sp"
+                android:textSize="24sp"
                 android:text="Nutritional Facts" />
 
             <TextView
@@ -134,17 +134,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBody1"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="12dp"
                 android:textStyle="bold"
-                android:textSize="20sp"
+                android:textSize="24sp"
                 android:text="Availability" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/storeRecyclerView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="0dp"
                 android:nestedScrollingEnabled="false"
-                android:layout_marginTop="8dp" />
+                android:overScrollMode="never" />
 
         </LinearLayout>
     </ScrollView>
@@ -162,16 +163,17 @@
             android:id="@+id/backButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="10dp"
+            android:layout_weight="0.9"
+            android:layout_marginEnd="4dp"
             android:text="Back" />
 
         <Button
             android:id="@+id/downloadButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="10dp"
+            android:layout_weight="1.2"
+            android:layout_marginEnd="4dp"
+            android:textSize="11sp"
             android:text="Download" />
 
         <Button
@@ -179,14 +181,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="10dp"
+            android:layout_marginEnd="4dp"
             android:text="Speak" />
 
         <Button
             android:id="@+id/closeButton"
-            android:layout_width="0dp"
+            android:layout_width="4dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="0.9"
             android:text="Close" />
     </LinearLayout>
 

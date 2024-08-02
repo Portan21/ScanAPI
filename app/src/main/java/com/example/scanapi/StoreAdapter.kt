@@ -23,9 +23,19 @@ class StoreAdapter(private val storeList: List<MainActivity.Store>?) :
 
     override fun onBindViewHolder(holder: StoreViewHolder, position: Int) {
         val store = storeList?.get(position)
+        var stockQuantity = ""
         holder.storeNameTextView.text = store?.branches
-        holder.priceTextView.text = "Price: ${store?.price}"
-        holder.stockTextView.text = "Stock: ${store?.stock}"
+        holder.priceTextView.text = "Price: ₱${store?.price}"
+        if (store?.stock!! > 50){
+            stockQuantity = "High Stock"
+        }
+        else if(store.stock == 0){
+            stockQuantity = "Out Of Stock"
+        }
+        else{
+            stockQuantity = "Low Stock"
+        }
+        holder.stockTextView.text = "$stockQuantity"
     }
 
     override fun getItemCount(): Int {
