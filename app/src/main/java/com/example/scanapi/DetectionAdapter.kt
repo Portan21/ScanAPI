@@ -6,25 +6,31 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class DetectionAdapter(private val detections: List<Detection>, private val onClick: (Detection) -> Unit) :
-    RecyclerView.Adapter<DetectionAdapter.DetectionViewHolder>() {
+class DetectionAdapter(
+    private val detections: List<Detection>,
+    private val listener: OnItemClickListener
+) : RecyclerView.Adapter<DetectionAdapter.DetectionViewHolder>() {
 
-    class DetectionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val detectionName: TextView = view.findViewById(R.id.detectionName)
+    interface OnItemClickListener {
+        fun onItemClick(detection: Detection)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DetectionViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_detection, parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_detection, parent, false)
         return DetectionViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: DetectionViewHolder, position: Int) {
         val detection = detections[position]
         holder.detectionName.text = detection.className
-        holder.itemView.setOnClickListener { onClick(detection) }
+        holder.itemView.setOnClickListener {
+            listener.onItemClick(detection)
+        }
     }
 
-    override fun getItemCount(): Int = detections.size
-}
+    override fun getItemCount() = detections.size
 
+    class DetectionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val detectionName: TextView = itemView.findViewById(R.id.detectionName)
+    }
+}

@@ -401,17 +401,21 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         val detectionRecyclerView = bottomSheetView.findViewById<RecyclerView>(R.id.detectionRecyclerView)
         detectionRecyclerView.layoutManager = LinearLayoutManager(this)
-        detectionRecyclerView.adapter = DetectionAdapter(detections) { detection ->
-            bottomSheetDialog.dismiss()
-            displayProductDetails(detection.className, imageFile, 0f)
-        }
+
+        val adapter = DetectionAdapter(detections, object : DetectionAdapter.OnItemClickListener {
+            override fun onItemClick(detection: Detection) {
+                bottomSheetDialog.dismiss()
+                displayProductDetails(detection.className, imageFile, 0f)
+            }
+        })
+
+        detectionRecyclerView.adapter = adapter
 
         bottomSheetDialog.show()
 
         val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
-
         closeButton.setOnClickListener {
-            Log.d("ScanActivity", "Close button clicked")
+            Log.d("MainActivity", "Close button clicked")
             bottomSheetDialog.dismiss()
         }
     }
