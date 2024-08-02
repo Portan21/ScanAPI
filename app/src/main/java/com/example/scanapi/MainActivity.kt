@@ -184,7 +184,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
 
             // Remove duplicates based on className
-            val uniqueDetections = detections.distinctBy { it.className }
+            val uniqueDetections = detections
+                .distinctBy { it.className }
+                .filter { it.confidence >= 0.70f }
 
             runOnUiThread {
                 if (uniqueDetections.isNotEmpty()) {
