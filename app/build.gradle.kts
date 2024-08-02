@@ -24,7 +24,7 @@ android {
     buildTypes {
         release {
             // Set to true when release
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -32,11 +32,13 @@ android {
             buildConfigField("String", "SUPABASE_URL", "\"https://ovlwakimblgemkcvoivj.supabase.co\"")
             buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92bHdha2ltYmxnZW1rY3ZvaXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMzkzNDEsImV4cCI6MjAzNzgxNTM0MX0.2ftfAcp-vprOsaH92vPhO5iSsYME0nSA9fOoH-RT-tE\"")
             buildConfigField("String", "ROBOFLOW_API_KEY", "\"4LF1NTVpUpZP66V6YLKr\"")
+            buildConfigField("String", "ROBOFLOW_API_URL", "\"https://detect.roboflow.com/shopping-assistant/3?api_key=4LF1NTVpUpZP66V6YLKr\"")
         }
         debug{
             buildConfigField("String", "SUPABASE_URL", "\"https://ovlwakimblgemkcvoivj.supabase.co\"")
             buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92bHdha2ltYmxnZW1rY3ZvaXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjIyMzkzNDEsImV4cCI6MjAzNzgxNTM0MX0.2ftfAcp-vprOsaH92vPhO5iSsYME0nSA9fOoH-RT-tE\"")
             buildConfigField("String", "ROBOFLOW_API_KEY", "\"4LF1NTVpUpZP66V6YLKr\"")
+            buildConfigField("String", "ROBOFLOW_API_URL", "\"https://detect.roboflow.com/shopping-assistant/3?api_key=4LF1NTVpUpZP66V6YLKr\"")
         }
     }
     compileOptions {

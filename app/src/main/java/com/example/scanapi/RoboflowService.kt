@@ -23,7 +23,7 @@ class RoboflowService(private val apiKey: String) {
             .build()
 
         val request = Request.Builder()
-            .url("https://detect.roboflow.com/shopping-assistant/3?api_key=4LF1NTVpUpZP66V6YLKr") // Ensure this is correct
+            .url(BuildConfig.ROBOFLOW_API_URL) // Ensure this is correct
             .post(body)
             .addHeader("Authorization", "Bearer $apiKey")
             .build()
