@@ -1,6 +1,5 @@
 package com.example.scanapi
 
-import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -12,7 +11,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -22,9 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.util.Locale
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -32,10 +28,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import retrofit2.HttpException
 import setHeightBasedOnChildren
 import java.net.URLEncoder
 
@@ -449,6 +442,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         bottomSheetDialog.setOnDismissListener {
+            if (this::textToSpeech.isInitialized && textToSpeech.isSpeaking) {
+                textToSpeech.stop()
+            }
             downloadButton.visibility = View.VISIBLE
         }
 

@@ -2,12 +2,10 @@ package com.example.scanapi
 
 import android.Manifest
 import android.content.ContentValues
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -28,8 +26,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.scanapi.MainActivity.nutritionfacts
-import com.example.scanapi.MainActivity.products
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -39,9 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import retrofit2.HttpException
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import setHeightBasedOnChildren
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -82,6 +77,39 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val description: String,
         val nutritionalFacts: String,
         val category: String,
+    )
+
+    @Serializable
+    data class nutritionfacts(
+        val productid: Int,
+        val servingsize: String,
+        val amtofserving: Double,
+        val calorie: Double,
+        val carbohydrate: Double,
+        val protein: Double,
+        val fat: Double
+    )
+
+    @Serializable
+    data class Branch(
+        val branchname: String
+    )
+
+    @Serializable
+    data class branchproduct(
+        val branchproductid: Int,
+        val branches: Branch,
+        val branchid: Int,
+        val productid: Int,
+        val price: Double,
+        val stock: Int,
+    )
+
+    data class Store(
+        val storeName: Int,
+        val branches: String,
+        val price: Double,
+        val stock: Int
     )
 
 
@@ -187,15 +215,17 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             runOnUiThread {
                 if (uniqueDetections.isNotEmpty()) {
+                    detected = true
                     showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
-                    showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
+                    detected = false
+                    errorBottomSheet(compressedFile)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
-                showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0f)
+                errorBottomSheet(compressedFile)
             }
         })
     }
@@ -242,7 +272,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val imageCapture = imageCapture ?: return
 
         val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".jpg"
-        val file = File(externalMediaDirs.first(), fileName)
+        file = File(externalMediaDirs.first(), fileName)
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
 
@@ -253,28 +283,26 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 roboflowService.uploadImage(resizedFile, { inferenceResponse ->
                     Log.d("ScanActivity", "Inference successful: $inferenceResponse")
-                    val resultText = if (inferenceResponse.predictions.isEmpty()) {
-                        "No Result"
-                    } else {
-                        detected = true;
-                        inferenceResponse.predictions.joinToString("\n") {
-                            "Detected: ${it.className} with confidence ${it.confidence}"
-                        }
+                    val detections = inferenceResponse.predictions.map {
+                        Detection(it.className, it.confidence)
                     }
+
+                    // Remove duplicates based on className
+                    val uniqueDetections = detections.distinctBy { it.className }
+
                     runOnUiThread {
-                        if (inferenceResponse.predictions.isNotEmpty()) {
-                            detected = true;
-                            val topPrediction = inferenceResponse.predictions[0].className
-                            displayProductDetails(topPrediction, resizedFile, rotationDegree)
+                        if (uniqueDetections.isNotEmpty()) {
+                            detected = true
+                            showDetectionListBottomSheet(uniqueDetections, resizedFile)
                         } else {
-                            detected = false;
-                            showBottomSheet(resizedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, rotationDegree)
+                            detected = false
+                            errorBottomSheet(resizedFile)
                         }
                     }
                 }, { errorMessage ->
                     Log.e("ScanActivity", errorMessage)
                     runOnUiThread {
-                        showBottomSheet(resizedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, rotationDegree)
+                        errorBottomSheet(resizedFile)
                     }
                 })
             }
@@ -285,7 +313,9 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         })
     }
 
-    private fun displayProductDetails(className: String, imageFile: File, rotationDegree: Float) {
+
+
+    private fun displayProductDetails(className: String, imageFile: File) {
         lifecycleScope.launch {
             val product = withContext(Dispatchers.IO) {
                 val encodedClassName = URLEncoder.encode(className, "UTF-8")
@@ -366,30 +396,51 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val carbohydrate = product2?.carbohydrate ?: 0.0
             val protein = product2?.protein ?: 0.0
             val fat = product2?.fat ?: 0.0
-//            val product2 = withContext(Dispatchers.IO) {
-//                try {
-//                    val response2 = try {
-//                        supabase.from("nutritionalfacts").select(columns = Columns.list("servingsize", "amtofserving", "calories", "carbohydrate", "protein", "fat")
-//                        ) {
-//                            filter {
-//                                nutritionfacts::productid eq productid
-//                                //or
-//                                eq("productid", productid)
-//                            }
-//                        }
-//                            .decodeList<nutritionfacts>()
-//                    } catch (e: Exception) {
-//                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-//                        emptyList<nutritionfacts>() // Return an empty list in case of error
-//                    }
-//                } catch (e: Exception) {
-//                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-//                    e.printStackTrace()
-//                    null
-//                }
-//            }
+
+            val stores = withContext(Dispatchers.IO) {
+                try {
+                    val response = try {
+                        supabase.from("branchproducts").select(Columns.raw("""
+                branchproductid,
+                branchid,
+                productid,
+                price,
+                stock,
+                branches(branchname)
+            """.trimIndent())) {
+                            filter {
+                                eq("productid", productid)
+                            }
+                        }.decodeList<branchproduct>()
+                    } catch (e: Exception) {
+                        Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                        emptyList<branchproduct>()
+                    }
+
+                    if (response.isNotEmpty()) {
+                        Log.d("ScanActivity", "Products found: ${response.size}")
+                        response.map {
+                            Store(
+                                storeName = it.branchid, // Adjust as necessary
+                                price = it.price,
+                                stock = it.stock,
+                                branches = it.branches.branchname // Use the extracted field
+                            )
+                        }
+                    } else {
+                        Log.d("ScanActivity", "No products found in Supabase.")
+                        emptyList()
+                    }
+                } catch (e: Exception) {
+                    Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
+                    emptyList()
+                }
+            }
+
+
+
             runOnUiThread {
-                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat, rotationDegree)
+                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat, stores)
             }
         }
     }
@@ -405,7 +456,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val adapter = DetectionAdapter(detections, object : DetectionAdapter.OnItemClickListener {
             override fun onItemClick(detection: Detection) {
                 bottomSheetDialog.dismiss()
-                displayProductDetails(detection.className, imageFile, 0f)
+                displayProductDetails(detection.className, imageFile)
             }
         })
 
@@ -416,48 +467,64 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val closeButton: Button = bottomSheetView.findViewById(R.id.closeButton)
         closeButton.setOnClickListener {
             Log.d("MainActivity", "Close button clicked")
+            resumeCamera()
             bottomSheetDialog.dismiss()
         }
     }
 
-
-
-    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, rotationDegree: Float) {
+    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, stores : List<Store>?) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+        val storeRecyclerView: RecyclerView = bottomSheetView.findViewById(R.id.storeRecyclerView)
+        storeRecyclerView.layoutManager = LinearLayoutManager(this)
+        val storeAdapter = ScanStoreAdapter(stores)
+        storeRecyclerView.adapter = storeAdapter
+        storeRecyclerView.setHeightBasedOnChildren()
+
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
         val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
         val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
         val nutritionalFactsDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsDisplayTextView)
+        val servingSizeTextView = bottomSheetView.findViewById<TextView>(R.id.servingSizeTextView)
+        val amtOfServingTextView = bottomSheetView.findViewById<TextView>(R.id.amtOfServingTextView)
+        val CalorieTextView = bottomSheetView.findViewById<TextView>(R.id.CalorieTextView)
+        val carbohydrateTextView = bottomSheetView.findViewById<TextView>(R.id.carbohydrateTextView)
+        val proteinTextView = bottomSheetView.findViewById<TextView>(R.id.proteinTextView)
+        val fatTextView = bottomSheetView.findViewById<TextView>(R.id.fatTextView)
         val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
         val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
         val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
         val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
         val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
 
-        val bitmap = BitmapFactory.decodeFile(imageFile.path)
-        val rotatedBitmap = rotateImage(bitmap, rotationDegree)
-        resultImageView.setImageBitmap(rotatedBitmap)
-
         resultTextView.text = productName
         descriptionTextView.text = description
         ingredientsTextView.text = ingredients
-        val allNutritionFacts = "Serving Size: $servingsize | Serving Amount: $amtofserving | Calorie: $calorie | carbohydrate: $carbohydrate | protein: $protein | fat: $fat"
-        nutritionalFactsDisplayTextView.text = allNutritionFacts
+        servingSizeTextView.text = "Serving Size: $servingsize"
+        amtOfServingTextView.text = "Serving Amount: $amtofserving"
+        CalorieTextView.text = "Calorie: $calorie"
+        carbohydrateTextView.text = "Carbohydrate: $carbohydrate"
+        proteinTextView.text = "Protein: $protein"
+        fatTextView.text = "Fat $fat"
 
-        if (!detected){
+        downloadButton.visibility = View.GONE
+
+        if(!detected){
             nutritionalFactsDisplayTextView.visibility = View.GONE
+            servingSizeTextView.visibility = View.GONE
+            amtOfServingTextView.visibility = View.GONE
+            CalorieTextView.visibility = View.GONE
+            carbohydrateTextView.visibility = View.GONE
+            proteinTextView.visibility = View.GONE
+            fatTextView.visibility = View.GONE
         }
 
-        if (upload){
-            downloadButton.visibility = View.GONE
-        }
-
-        downloadButton.setOnClickListener {
-            saveImageToGallery(rotatedBitmap)
-        }
-
+        val bitmap = BitmapFactory.decodeFile(imageFile.path)
+        val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust max width as needed
+        resultImageView.setImageBitmap(resizedBitmap)
 
         closeButton.setOnClickListener {
             Log.d("MainActivity", "Close button clicked")
@@ -472,7 +539,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         speakerButton.setOnClickListener {
             if (ttsInitialized && detected) {
-                val combinedText = "$productName. $description. Ingredients: $ingredients. Serving Size: $servingsize. Serving Amount: $amtofserving. Calorie: $calorie. carbohydrate: $carbohydrate. protein: $protein. fat: $fat.\""
+                val combinedText = "$productName. $description. Ingredients: $ingredients. Serving Size: $servingsize. Serving Amount: $amtofserving. Calorie: $calorie. carbohydrate: $carbohydrate. protein: $protein. fat: $fat."
                 textToSpeech.speak(combinedText, TextToSpeech.QUEUE_FLUSH, null, null)
             }
             else if (ttsInitialized){
@@ -481,11 +548,86 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
 
-        bottomSheetDialog.setContentView(bottomSheetView)
         bottomSheetDialog.setOnDismissListener {
-            resumeCamera()
+            if (this::textToSpeech.isInitialized && textToSpeech.isSpeaking) {
+                textToSpeech.stop()
+            }
+            resumeCamera() // Enable capture button when bottom sheet is dismissed
         }
+
         bottomSheetDialog.show()
+        val bottomSheet = bottomSheetDialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+        bottomSheet?.let { sheet ->
+            val behavior = BottomSheetBehavior.from(sheet)
+            behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+    }
+
+    private fun errorBottomSheet(imageFile: File){
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
+        bottomSheetDialog.setContentView(bottomSheetView)
+
+
+        val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
+        val descriptionDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionDisplayTextView)
+        val descriptionTextView = bottomSheetView.findViewById<TextView>(R.id.descriptionTextView)
+        val ingredientDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsDisplayTextView)
+        val storeDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.storeDisplayTextView)
+        val ingredientsTextView = bottomSheetView.findViewById<TextView>(R.id.ingredientsTextView)
+        val nutritionalFactsDisplayTextView = bottomSheetView.findViewById<TextView>(R.id.nutritionalFactsDisplayTextView)
+        val servingSizeTextView = bottomSheetView.findViewById<TextView>(R.id.servingSizeTextView)
+        val amtOfServingTextView = bottomSheetView.findViewById<TextView>(R.id.amtOfServingTextView)
+        val calorieTextView = bottomSheetView.findViewById<TextView>(R.id.CalorieTextView)
+        val carbohydrateTextView = bottomSheetView.findViewById<TextView>(R.id.carbohydrateTextView)
+        val proteinTextView = bottomSheetView.findViewById<TextView>(R.id.proteinTextView)
+        val fatTextView = bottomSheetView.findViewById<TextView>(R.id.fatTextView)
+        val resultImageView = bottomSheetView.findViewById<ImageView>(R.id.resultImageView)
+        val closeButton = bottomSheetView.findViewById<Button>(R.id.closeButton)
+        val backButton: Button = bottomSheetView.findViewById(R.id.backButton)
+        val speakerButton = bottomSheetView.findViewById<Button>(R.id.speakerButton)
+        val downloadButton = bottomSheetView.findViewById<Button>(R.id.downloadButton)
+
+        resultTextView.text = "Product Not Found"
+        descriptionDisplayTextView.text = "Please try again"
+
+
+        downloadButton.visibility = View.GONE
+        speakerButton.visibility = View.GONE
+        descriptionTextView.visibility = View.GONE
+        downloadButton.visibility = View.GONE
+        storeDisplayTextView.visibility = View.GONE
+        ingredientDisplayTextView.visibility = View.GONE
+        ingredientsTextView.visibility = View.GONE
+        backButton.visibility = View.GONE
+        nutritionalFactsDisplayTextView.visibility = View.GONE
+        servingSizeTextView.visibility = View.GONE
+        amtOfServingTextView.visibility = View.GONE
+        calorieTextView.visibility = View.GONE
+        carbohydrateTextView.visibility = View.GONE
+        proteinTextView.visibility = View.GONE
+        fatTextView.visibility = View.GONE
+
+        val bitmap = BitmapFactory.decodeFile(imageFile.path)
+        val resizedBitmap = resizeImageForDisplay(bitmap, 800) // Adjust max width as needed
+        resultImageView.setImageBitmap(resizedBitmap)
+
+        closeButton.setOnClickListener {
+            Log.d("MainActivity", "Close button clicked")
+            bottomSheetDialog.dismiss()
+        }
+
+        bottomSheetDialog.setOnDismissListener {
+            resumeCamera() // Enable capture button when bottom sheet is dismissed
+            downloadButton.visibility = View.VISIBLE
+        }
+
+        bottomSheetDialog.show()
+        val bottomSheet = bottomSheetDialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+        bottomSheet?.let { sheet ->
+            val behavior = BottomSheetBehavior.from(sheet)
+            behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
     }
 
 
