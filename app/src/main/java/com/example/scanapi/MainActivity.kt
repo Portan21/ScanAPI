@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private var detected = false
 
+    private var isfood = false
 
     val supabase = createSupabaseClient(
         supabaseUrl = BuildConfig.SUPABASE_URL,
@@ -273,6 +274,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val productName = product?.prodname ?: "No details available"
             val description = product?.description ?: "No details available"
             val ingredients = product?.ingredient ?: "No nutritional facts available"
+            val categoryid = product?.categoryid ?: 0
+
+            if(categoryid != 4){
+                isfood = true
+            }
 
             val product2 = withContext(Dispatchers.IO) {
                 val encodedClassName = URLEncoder.encode(className, "UTF-8")
@@ -405,7 +411,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         downloadButton.visibility = View.GONE
 
-        if(!detected){
+        if(!detected || !isfood){
             nutritionalFactsDisplayTextView.visibility = View.GONE
             servingSizeTextView.visibility = View.GONE
             amtOfServingTextView.visibility = View.GONE

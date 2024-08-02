@@ -62,6 +62,8 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var detected = true
     private var upload = false;
 
+    private var isfood = false
+
     val supabase = createSupabaseClient(
         supabaseUrl = BuildConfig.SUPABASE_URL,
         supabaseKey = BuildConfig.SUPABASE_KEY
@@ -396,6 +398,11 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val carbohydrate = product2?.carbohydrate ?: 0.0
             val protein = product2?.protein ?: 0.0
             val fat = product2?.fat ?: 0.0
+            val categoryid = product?.categoryid ?: 0
+
+            if(categoryid != 4){
+                isfood = true
+            }
 
             val stores = withContext(Dispatchers.IO) {
                 try {
@@ -512,7 +519,7 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         downloadButton.visibility = View.GONE
 
-        if(!detected){
+        if(!detected || !isfood){
             nutritionalFactsDisplayTextView.visibility = View.GONE
             servingSizeTextView.visibility = View.GONE
             amtOfServingTextView.visibility = View.GONE
