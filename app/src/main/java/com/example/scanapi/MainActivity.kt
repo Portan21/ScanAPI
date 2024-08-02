@@ -78,24 +78,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     )
 
     @Serializable
-    data class branch(
-        val productid: Int,
-        val servingsize: String,
-        val amtofserving: Double,
-        val calorie: Double,
-        val carbohydrate: Double,
-        val protein: Double,
-        val fat: Double
+    data class Branch(
+        val branchname: String
     )
 
     @Serializable
     data class branchproduct(
         val branchproductid: Int,
+        val branches: Branch,
         val branchid: Int,
         val productid: Int,
         val price: Double,
         val stock: Int,
     )
+
+    data class Store(
+        val storeName: Int,
+        val branches: String,
+        val price: Double,
+        val stock: Int
+    )
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -194,14 +197,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     showDetectionListBottomSheet(uniqueDetections, compressedFile)
                 } else {
                     detected = false
-                    showBottomSheet(compressedFile, "No Result", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0)
                 }
             }
         }, { errorMessage ->
             Log.e("ScanActivity", errorMessage)
             runOnUiThread {
                 detected = false
-                showBottomSheet(compressedFile, "Error: $errorMessage", "Product Not Found", "Please try again", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0)
             }
         })
     }
@@ -318,56 +319,64 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val protein = product2?.protein ?: 0.0
             val fat = product2?.fat ?: 0.0
 
-            val product3 = withContext(Dispatchers.IO) {
-                val encodedClassName = URLEncoder.encode(className, "UTF-8")
-                Log.d("ScanActivity", "Querying product details for: $encodedClassName")
-
+            val stores = withContext(Dispatchers.IO) {
                 try {
-                    // Querying Supabase
                     val response = try {
-                        supabase.from("branchproducts").select(columns = Columns.list("branchproductid", "branchid", "productid", "price", "stock")) {
+                        supabase.from("branchproducts").select(Columns.raw("""
+                branchproductid,
+                branchid,
+                productid,
+                price,
+                stock,
+                branches(branchname)
+            """.trimIndent())) {
                             filter {
-                                branchproduct::productid eq productid
-                                //or
                                 eq("productid", productid)
                             }
-                        }
-                            .decodeList<branchproduct>()
+                        }.decodeList<branchproduct>()
                     } catch (e: Exception) {
                         Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-                        emptyList<branchproduct>() // Return an empty list in case of error
+                        emptyList<branchproduct>()
                     }
 
-
                     if (response.isNotEmpty()) {
-                        Log.d("ScanActivity", "Product found: ${response[1].branchid} - ${response[0].productid}")
-                        response[0]
+                        Log.d("ScanActivity", "Products found: ${response.size}")
+                        response.map {
+                            Store(
+                                storeName = it.branchid, // Adjust as necessary
+                                price = it.price,
+                                stock = it.stock,
+                                branches = it.branches.branchname // Use the extracted field
+                            )
+                        }
                     } else {
-                        Log.d("ScanActivity", "Product not found in Supabase.")
-                        null
+                        Log.d("ScanActivity", "No products found in Supabase.")
+                        emptyList()
                     }
                 } catch (e: Exception) {
                     Log.e("ScanActivity", "Error querying Supabase: ${e.message}", e)
-                    e.printStackTrace()
-                    null
+                    emptyList()
                 }
             }
-            val price = product3?.price ?: 0.0
-            val stock = product3?.stock ?: 0
+
 
 
             runOnUiThread {
-                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat, price, stock)
+                showBottomSheet(imageFile, productName, description, ingredients, servingsize, amtofserving, calorie, carbohydrate, protein, fat, stores)
             }
         }
     }
 
 
 
-    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, price : Double, stock : Int) {
+    private fun showBottomSheet(imageFile: File, productName: String, description: String, ingredients: String, servingsize : String, amtofserving : Double, calorie : Double, carbohydrate : Double, protein : Double, fat : Double, stores : List<Store>?) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_result, null)
         bottomSheetDialog.setContentView(bottomSheetView)
+
+        val storeRecyclerView: RecyclerView = bottomSheetView.findViewById(R.id.storeRecyclerView)
+        storeRecyclerView.layoutManager = LinearLayoutManager(this)
+        storeRecyclerView.adapter = StoreAdapter(stores)
 
 
         val resultTextView = bottomSheetView.findViewById<TextView>(R.id.resultTextView)
