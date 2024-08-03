@@ -514,12 +514,12 @@ class ScanActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         resultTextView.text = productName
         descriptionTextView.text = description
         ingredientsTextView.text = ingredients
-        servingSizeTextView.text = "Serving Size: $servingsize"
-        amtOfServingTextView.text = "Serving Amount: $amtofserving"
-        CalorieTextView.text = "Calorie: $calorie"
-        carbohydrateTextView.text = "Carbohydrate: $carbohydrate"
-        proteinTextView.text = "Protein: $protein"
-        fatTextView.text = "Fat $fat"
+        servingSizeTextView.text = "Serving Size: $servingsize g"
+        amtOfServingTextView.text = "Serving Amount: $amtofserving g"
+        CalorieTextView.text = "Calorie: $calorie kcal"
+        carbohydrateTextView.text = "Carbohydrate: $carbohydrate g"
+        proteinTextView.text = "Protein: $protein g"
+        fatTextView.text = "Fat $fat g"
 
         downloadButton.visibility = View.GONE
 
